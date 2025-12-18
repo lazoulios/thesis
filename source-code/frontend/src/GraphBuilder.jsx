@@ -1,4 +1,3 @@
-// src/GraphBuilder.jsx
 import React, { useCallback, useState } from 'react';
 import ReactFlow, {
   useNodesState,
@@ -8,7 +7,9 @@ import ReactFlow, {
   Controls,
   MiniMap
 } from 'reactflow';
+
 import 'reactflow/dist/style.css'; 
+import './GraphBuilder.css';
 
 const initialNodes = [];
 const initialEdges = [];
@@ -18,52 +19,82 @@ export default function GraphBuilder() {
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [nodeId, setNodeId] = useState(1);
 
+  const isSelectionActive = nodes.some((node) => node.selected) || edges.some((edge) => edge.selected);
+
   const addNode = () => {
     const newNode = {
       id: `${nodeId}`,
-      position: { x: Math.random() * 400, y: Math.random() * 400 },
+      position: { 
+        x: Math.random() * 300 + 100, 
+        y: Math.random() * 300 + 100 
+      },
       data: { label: `Node ${nodeId}` },
-      style: { background: '#fff', border: '1px solid #777', borderRadius: '50%', width: 60, height: 60, display: 'flex', justifyContent: 'center', alignItems: 'center' },
+      className: 'thesis-node', 
     };
     setNodes((nds) => nds.concat(newNode));
     setNodeId((id) => id + 1);
   };
 
   const onConnect = useCallback(
-    (params) => setEdges((eds) => addEdge(params, eds)),
+    (params) => setEdges((eds) => addEdge({ 
+      ...params, 
+      animated: true, 
+      style: { stroke: '#555', strokeWidth: 2 } 
+    }, eds)),
     [setEdges],
   );
+
+  const deleteSelected = () => {
+    setNodes((nds) => nds.filter((node) => !node.selected));
+    setEdges((eds) => eds.filter((edge) => !edge.selected));
+  };
 
   const printGraphData = () => {
     console.log("Nodes:", nodes);
     console.log("Edges:", edges);
-    alert(`Graph has ${nodes.length} nodes and ${edges.length} edges.`);
+    alert(`Exported JSON to console! (${nodes.length} nodes, ${edges.length} edges)`);
   };
 
   return (
-    <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ padding: '10px', background: '#f0f0f0', borderBottom: '1px solid #ccc', display: 'flex', gap: '10px' }}>
-        <button onClick={addNode} style={{ padding: '10px', cursor: 'pointer', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px' }}>
-          + Add Node
+    <div className="graph-container">
+      
+      <div className="control-panel">
+        <h3 className="panel-title">Graph Tools</h3>
+        
+        <button className="btn btn-add" onClick={addNode}>
+          <span>+</span> Add Node
         </button>
-        <button onClick={printGraphData} style={{ padding: '10px', cursor: 'pointer', backgroundColor: '#008CBA', color: 'white', border: 'none', borderRadius: '5px' }}>
-          Export JSON
-        </button>
-      </div>
-      <div style={{ flex: 1 }}>
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          fitView
+        
+        <button 
+          className="btn btn-delete" 
+          onClick={deleteSelected}
+          disabled={!isSelectionActive} 
         >
-          <Background color="#aaa" gap={16} />
-          <Controls />
-          <MiniMap />
-        </ReactFlow>
+          <span>🗑️</span> Delete Selected
+        </button>
+
+        <hr style={{width: '100%', border: '0', borderTop: '1px solid #eee', margin: '5px 0'}}/>
+
+        <button className="btn btn-export" onClick={printGraphData}>
+          <span>⬇</span> Export JSON
+        </button>
       </div>
+
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        defaultViewport={{ x: 0, y: 0, zoom: 1.5}} 
+        minZoom={0.5} 
+        maxZoom={2}   
+        deleteKeyCode={['Backspace', 'Delete']} 
+      >
+        <Background color="#aaa" gap={20} size={1.25} />
+        <Controls />
+        <MiniMap style={{height: 100, border: '1px solid #ddd'}} />
+      </ReactFlow>
     </div>
   );
 }
