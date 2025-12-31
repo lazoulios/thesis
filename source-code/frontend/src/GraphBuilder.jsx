@@ -1,5 +1,4 @@
-// src/GraphBuilder.jsx
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import ReactFlow, {
   useNodesState,
   useEdgesState,
@@ -21,6 +20,7 @@ export default function GraphBuilder() {
   const [nodeId, setNodeId] = useState(1);
 
   const [rfInstance, setRfInstance] = useState(null);
+  const fileInputRef = useRef(null);
   
   // State για το άνοιγμα/κλείσιμο του Sidebar
   const [isSidebarOpen, setSidebarOpen] = useState(true);
@@ -107,6 +107,88 @@ export default function GraphBuilder() {
     setStartNodeState(null);
     setTargetNodesState(new Set());
     setEdgeWeight('');
+  };
+
+  const downloadGraph = async () => {
+    // 1. Ετοιμάζουμε τα δεδομένα
+    const graphData = {
+        nodes,
+        edges,
+        startNode,
+        targetNodes: Array.from(targetNodes),
+        nodeId
+    };
+
+    const jsonString = JSON.stringify(graphData, null, 2);
+
+    try {
+        // 2. Δοκιμάζουμε το μοντέρνο API που ανοίγει το παράθυρο "Save As"
+        if (window.showSaveFilePicker) {
+            const handle = await window.showSaveFilePicker({
+                suggestedName: 'thesis_graph.json',
+                types: [{
+                    description: 'JSON Graph File',
+                    accept: { 'application/json': ['.json'] },
+                }],
+            });
+            const writable = await handle.createWritable();
+            await writable.write(jsonString);
+            await writable.close();
+        } else {
+            // Fallback (για παλιούς browsers): Κατεβαίνει αυτόματα στα Downloads
+            const blob = new Blob([jsonString], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "thesis_graph.json";
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+    } catch (err) {
+        // Αν ο χρήστης πατήσει Cancel στο παράθυρο, το αγνοούμε
+        if (err.name !== 'AbortError') {
+            console.error("Save failed:", err);
+            alert("Could not save file.");
+        }
+    }
+  };
+
+  const triggerLoad = () => {
+    // Πατάμε προγραμματιστικά το κρυφό input file
+    fileInputRef.current.click();
+  };
+
+  // --- NEW: HANDLE FILE UPLOAD ---
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        
+        // Restore state
+        setNodes(parsed.nodes || []);
+        setEdges(parsed.edges || []);
+        setStartNodeState(parsed.startNode || null);
+        setTargetNodesState(new Set(parsed.targetNodes || [])); 
+        setNodeId(parsed.nodeId || 1);
+        
+        // Reset view to fit graph
+        if (rfInstance) {
+            setTimeout(() => rfInstance.fitView({ padding: 0.2, duration: 800 }), 100);
+        }
+        alert("Graph loaded successfully!");
+      } catch (err) {
+        console.error("Error parsing JSON:", err);
+        alert("Invalid JSON file.");
+      }
+    };
+    reader.readAsText(file);
+    
+    // Καθαρίζουμε το input για να μπορούμε να ξαναφορτώσουμε το ίδιο αρχείο αν χρειαστεί
+    event.target.value = null; 
   };
 
   const setAsStart = () => {
@@ -362,6 +444,13 @@ export default function GraphBuilder() {
   return (
     <div className="graph-container">
       
+      <input 
+        type="file" 
+        accept=".json" 
+        ref={fileInputRef} 
+        style={{ display: 'none' }} 
+        onChange={handleFileUpload} />
+
       {!isSidebarOpen && (
         <button 
           className="toggle-sidebar-btn" 
@@ -437,6 +526,17 @@ export default function GraphBuilder() {
             <button className="btn btn-clear" onClick={clearGraph}>
                 <span>🧹</span> Clear All
             </button>
+
+            <hr style={{width: '100%', border: '0', borderTop: '1px solid #eee', margin: '10px 0'}}/>
+
+            <div style={{display: 'flex', gap: '5px', marginTop: '5px'}}>
+                <button className="btn" style={{backgroundColor: '#64748b', color: 'white', marginTop: '0'}} onClick={downloadGraph} title="Save to File">
+                    <span>💾</span> Save
+                </button>
+                <button className="btn" style={{backgroundColor: '#475569', color: 'white', marginTop: '0'}} onClick={triggerLoad} title="Load from File">
+                    <span>📂</span> Load
+                </button>
+            </div>
 
             <hr style={{width: '100%', border: '0', borderTop: '1px solid #eee', margin: '10px 0'}}/>
 
