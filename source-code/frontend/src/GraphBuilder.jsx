@@ -1,5 +1,5 @@
 // src/GraphBuilder.jsx
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import ReactFlow, {
   useNodesState,
   useEdgesState,
@@ -21,12 +21,29 @@ export default function GraphBuilder() {
   const [nodeId, setNodeId] = useState(1);
 
   const [rfInstance, setRfInstance] = useState(null);
+  
+  // State για το άνοιγμα/κλείσιμο του Sidebar
+  const [isSidebarOpen, setSidebarOpen] = useState(true);
 
   const [startNode, setStartNodeState] = useState(null); 
   const [targetNodes, setTargetNodesState] = useState(new Set()); 
 
   const selectedNode = nodes.find((n) => n.selected);
+  const selectedEdge = edges.find((e) => e.selected);
   const isNodeSelected = !!selectedNode;
+
+  const [edgeWeight, setEdgeWeight] = useState('');
+
+  useEffect(() => {
+    if (selectedEdge) {
+      const labelStr = selectedEdge.label || 'Cost: 1';
+      // Replaces "Cost: 9" with "9"
+      const numericPart = labelStr.replace('Cost: ', ''); 
+      setEdgeWeight(numericPart);
+    } else {
+      setEdgeWeight('');
+    }
+  }, [selectedEdge]);
 
   const addNode = () => {
     const newNode = {
@@ -41,10 +58,28 @@ export default function GraphBuilder() {
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge({ 
-      ...params, animated: true, style: { stroke: '#555', strokeWidth: 2 } 
+      ...params, 
+      animated: true, 
+      label: 'Cost: 1', 
+      style: { stroke: '#555', strokeWidth: 2 } 
     }, eds)),
     [setEdges],
   );
+
+  const handleWeightChange = (e) => {
+    const newVal = e.target.value;
+    setEdgeWeight(newVal);
+    
+    if (selectedEdge) {
+      setEdges((eds) => eds.map((edge) => {
+        if (edge.id === selectedEdge.id) {
+          // Add the prefix back before saving to the graph
+          return { ...edge, label: `Cost: ${newVal}` };
+        }
+        return edge;
+      }));
+    }
+  };
 
   const deleteSelected = () => {
     setNodes((nds) => nds.filter((node) => {
@@ -60,6 +95,18 @@ export default function GraphBuilder() {
       return true;
     }));
     setEdges((eds) => eds.filter((edge) => !edge.selected));
+  };
+
+  const clearGraph = () => {
+    if (nodes.length === 0) return; 
+    if (!confirm("Are you sure you want to clear the entire graph?")) return;
+
+    setNodes([]);
+    setEdges([]);
+    setNodeId(1);
+    setStartNodeState(null);
+    setTargetNodesState(new Set());
+    setEdgeWeight('');
   };
 
   const setAsStart = () => {
@@ -167,13 +214,16 @@ export default function GraphBuilder() {
                 );
 
                 if (!exists) {
-                    newEdges.push({
-                        id: edgeId,
-                        source: `${i}`,
-                        target: `${possibleTarget}`,
-                        animated: true,
-                        style: { stroke: '#555', strokeWidth: 2 },
-                    });
+                  const weight = Math.floor(Math.random() * 10) + 1;
+
+                  newEdges.push({
+                      id: edgeId,
+                      source: `${i}`,
+                      target: `${possibleTarget}`,
+                      animated: true,
+                      label: `Cost: ${weight}`,
+                      style: { stroke: '#555', strokeWidth: 2 },
+                  });
                 }
             }
         }
@@ -299,7 +349,11 @@ export default function GraphBuilder() {
         startNode: startNode,
         targetNodes: Array.from(targetNodes),
         nodes: nodes,
-        edges: edges
+        edges: edges.map(e => ({ 
+            source: e.source, 
+            target: e.target, 
+            weight: e.label ? parseInt(e.label.replace('Cost: ', '')) : 1 
+        }))
     };
     console.log("Graph Data:", graphData);
     alert(`Exported!\nStart: ${startNode}\nTargets: ${targetNodes.size}\nCheck Console.`);
@@ -307,50 +361,97 @@ export default function GraphBuilder() {
 
   return (
     <div className="graph-container">
-      <div className="control-panel">
-        <h3 className="panel-title">Graph Tools</h3>
-        
-        <button className="btn btn-add" onClick={addNode}><span>+</span> Add Node</button>
-        
+      
+      {!isSidebarOpen && (
         <button 
-            className="btn btn-start" 
-            onClick={setAsStart} 
-            disabled={!isNodeSelected}
-            title="Set selected node as Start (Source)"
+          className="toggle-sidebar-btn" 
+          onClick={() => setSidebarOpen(true)}
+          title="Open Tools"
         >
-          <span>🚩</span> Set Start
+          <span>☰</span>
         </button>
+      )}
+
+      <div className={`control-panel ${isSidebarOpen ? 'open' : 'closed'}`}>
         
-        <button 
-            className="btn btn-target" 
-            onClick={toggleTarget} 
-            disabled={!isNodeSelected}
-            title="Toggle selected node as Target"
-        >
-          <span>🎯</span> Toggle Target
-        </button>
+        <div className="panel-content">
+            
+            <div className="panel-header">
+                <h3 className="panel-title">Graph Tools</h3>
+                <button 
+                  className="btn-close-panel" 
+                  onClick={() => setSidebarOpen(false)}
+                  title="Close Tools"
+                >
+                  ✕
+                </button>
+            </div>
+            
+            <div className={`edge-weight-container ${selectedEdge ? 'active' : 'disabled'}`}>
+                <label className={`edge-weight-label ${selectedEdge ? 'active' : 'disabled'}`}>
+                    Edge Weight
+                </label>
+                <input 
+                    type={selectedEdge ? "number" : "text"} 
+                    min="1"
+                    value={selectedEdge ? edgeWeight : ""}
+                    placeholder={selectedEdge ? "" : "Select an edge"}
+                    onChange={handleWeightChange}
+                    disabled={!selectedEdge}
+                    className={`weight-input ${selectedEdge ? 'active' : 'disabled'}`}
+                />
+            </div>
 
-        <button 
-            className="btn btn-delete" 
-            onClick={deleteSelected}
-            disabled={!nodes.some(n => n.selected) && !edges.some(e => e.selected)}
-        >
-          <span>🗑️</span> Delete Selected
-        </button>
+            <div style={{margin: '10px 0', borderTop: '1px solid #eee'}}></div>
 
-        <hr style={{width: '100%', border: '0', borderTop: '1px solid #eee', margin: '10px 0'}}/>
+            <button className="btn btn-add" onClick={addNode}><span>+</span> Add Node</button>
+            
+            <button 
+                className="btn btn-start" 
+                onClick={setAsStart} 
+                disabled={!isNodeSelected}
+                title="Set selected node as Start (Source)"
+            >
+                <span>🚩</span> Set Start
+            </button>
+            
+            <button 
+                className="btn btn-target" 
+                onClick={toggleTarget} 
+                disabled={!isNodeSelected}
+                title="Toggle selected node as Target"
+            >
+                <span>🎯</span> Toggle Target
+            </button>
 
-        <button className="btn btn-random" onClick={generateRandomGraph}>
-          <span>🎲</span> Random Graph
-        </button>
+            <button 
+                className="btn btn-delete" 
+                onClick={deleteSelected}
+                disabled={!nodes.some(n => n.selected) && !edges.some(e => e.selected)}
+            >
+                <span>🗑️</span> Delete Selected
+            </button>
 
-        <button className="btn btn-random" style={{marginTop: '5px', backgroundColor: '#e11d48'}} onClick={generateTrapGraph}>
-          <span>🪤</span> Trap Scenario
-        </button>
+            <hr style={{width: '100%', border: '0', borderTop: '1px solid #eee', margin: '10px 0'}}/>
 
-        <hr style={{width: '100%', border: '0', borderTop: '1px solid #eee', margin: '5px 0'}}/>
+            <button className="btn btn-clear" onClick={clearGraph}>
+                <span>🧹</span> Clear All
+            </button>
 
-        <button className="btn btn-export" onClick={printGraphData}><span>⬇</span> Export JSON</button>
+            <hr style={{width: '100%', border: '0', borderTop: '1px solid #eee', margin: '10px 0'}}/>
+
+            <button className="btn btn-random" onClick={generateRandomGraph}>
+                <span>🎲</span> Random Graph
+            </button>
+
+            <button className="btn btn-random" style={{marginTop: '5px', backgroundColor: '#e11d48'}} onClick={generateTrapGraph}>
+                <span>🪤</span> Trap Scenario
+            </button>
+
+            <hr style={{width: '100%', border: '0', borderTop: '1px solid #eee', margin: '5px 0'}}/>
+
+            <button className="btn btn-export" onClick={printGraphData}><span>⬇</span> Export JSON</button>
+        </div>
       </div>
 
       <ReactFlow
@@ -366,7 +467,7 @@ export default function GraphBuilder() {
         deleteKeyCode={['Backspace', 'Delete']} 
       >
         <Background color="#aaa" gap={20} size={1} />
-        <Controls />
+        <Controls position="top-right" />
         <MiniMap style={{height: 100, border: '1px solid #ddd'}} />
       </ReactFlow>
     </div>
