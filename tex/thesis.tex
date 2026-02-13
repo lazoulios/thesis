@@ -1,0 +1,56 @@
+\documentclass[12pt,a4paper]{report}
+
+% --- Basic Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{setspace}
+
+\onehalfspacing
+
+\begin{document}
+
+% title page 
+\begin{titlepage}
+    \centering 
+    \vspace{2.5cm} 
+    {\Large \textbf{Study and Implementation of Learning-Augmented Shortest Path Algorithms: Experimental Evaluation and Visualization Application}}\\[0.1cm]
+    \vspace{1cm}
+    \vspace{2cm}
+    Georgios Lazaridis\\[0.5cm]
+    AEM: 4419\\[1cm]
+    \includegraphics[width=0.3\textwidth]{images/auth.png}\\[0.5cm]
+    \vspace{0.5cm}
+    {\Large Aristotle University of Thessaloniki}
+    \vfill
+    {\Large December 2025}
+    \vspace*{1cm} 
+\end{titlepage}
+
+\author{Georgios Lazaridis}
+
+% front matter
+\pagenumbering{roman} 
+
+\include{frontmatter/abstract}
+
+\tableofcontents
+\listoffigures
+\newpage
+
+% main
+\pagenumbering{arabic} 
+
+\include{chapters/1_introduction}
+\include{chapters/2_background}
+% \include{chapters/3_learning_augmented}
+% \include{chapters/4_implementation}
+% \include{chapters/5_experiments}
+% \include{chapters/6_conclusions}
+
+% bibliography
+\bibliographystyle{ieeetr}
+\bibliography{bibliography/references} 
+
+\end{document}

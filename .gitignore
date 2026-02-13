@@ -190,8 +190,31 @@ cython_debug/
 .cursorindexingignore
 
 # LaTeX files
-/tex/
+*.aux
+*.lof
+*.log
+*.lot
+*.fls
+*.out
+*.toc
+.gz
+.nav
+*.idx *.ind *.ilg
+*.glo *.gls *.glg
+*.svn *.svt *.svx
+*.run.xml
+*.fff
+tool: *.fdb_latexmk
+*.sta *.stp
+*.gz
+*.bbl
+*.blg
+*.fdb_latexmk
+images/
 
+#will prob remove this later
+appendices/
+*.pdf
 
 # Logs
 logs

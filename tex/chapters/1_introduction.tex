@@ -1,0 +1,79 @@
+\chapter{Introduction}
+\label{ch:introduction}
+
+The Shortest Path Problem still to this day remains one of the most fundamental and important problems in computer science and graph theory.
+Many different applications for this problem exist, ranging from navigation on Google Maps to a lot of network routing protocols.
+It is clear therefore that algorithms designed for the solution of the problem ought to be as efficient as they can. 
+
+The Single-Source Many-Targets Shortest-Path Problem differs regarding the number of targets on a given graph. 
+Given a directed graph with non negative edges weights we aim to calculate the shortest path from a single source to any of the several designated target nodes.
+
+\section{Motivation}
+In recent times Big Data has dominated the information space with many real-world applications having billions or even trillions of data points. 
+It is important to note that in a lot of areas that data doesn't change dramatically from day to day but in a periodic manner. 
+Therefore both in regards to time analysis and space in the heap, algorithms like Dijkstra's\cite{dijkstraNoteTwoProblems1959} are ineffective because they run blind without prior knowledge on the relative target's location. 
+Heuristic algorithms such as A*\cite{hartFormalBasisHeuristic1968b} proposed by Hart, Nilsson and Raphael and ALT\cite{goldbergComputingShortestPath2005} proposed by Goldberg and Harrelson on the other hand, 
+require specific domain knowledge or a lot of pre processing, such is the case of Contraction Hierarchies\cite{geisbergerContractionHierarchiesFaster2008}.
+
+The question is then can we use of machine learning to further augment these pre-existing algorithms by predicting a shortest path to further speed up query times and reduce on the memory allocation on the priority queue of these algorithms?
+
+
+
+\section{Problem Statement}
+This thesis focuses on the \textit{Single-Source Many-Targets Shortest Path (SSMTSP)} problem. 
+Given a directed, weighted graph $G=(V, E)$, a source node $s$, and a set of target nodes $T \subseteq V$, the goal is to find the shortest paths from $s$ to all $t \in T$.
+
+The goal is to investigate how a given prediction from a Machine Learning model can be used on Dijkstra\cite{dijkstraNoteTwoProblems1959} in order to prioritize the exploration of the most likely nodes. 
+\textsc{DIJKSTRA} can be used to find the shortest path from a starting point s to the first (closest) target point T.
+A worst case running time of O(\textit{m} + \textit{n}log\textit{n}) (where \textit{n} and \textit{m} are the number of nodes and edges respectively) 
+can be achieved with the use of Fibonacci heaps as proposed by Fredman and Tarjan\cite{fredmanFibonacciHeapsTheir1987}.
+
+Many such studies have been produced in recent years in the area of online algorithms. This research direction has become know as \textit{Algorithm with Predictions} (or \textit{Learning Augmented Algorithms})
+which was introduced and formalized by Mitzenmacher and Vassilvitskii in their paper Algorithm with Predictions\cite{mitzenmacherAlgorithmsPredictions2020}.
+Similar algorithms, studies and research articles in this topics are available at https://algorithms-with-predictions.github.io
+
+The goal is for the given algorithm to therefore follow along the three principles laid out (see Lykouris and Vassilvitskii\cite{lykourisCompetitiveCachingMachine2021}) regarding online algorithms: 
+
+\begin{enumerate}
+\item \textbf{$\alpha$-consistency:}  Measures the performance of the algorithm when the ML predictions are perfect (i.e., error is zero). The algorithm is $\alpha$-consistent if its competitive ratio is bounded by $\alpha$.
+\item \textbf{$\beta$-robustness:} Measures the performance of the algorithm when the predictions are inaccurate.The algorithm is $\beta$-robust if its competitive ratio is bounded by $\beta$ in the worst-case scenario. Ideally, $\beta$ is close to the best known competitive ratio for the same problem without any predictions.
+\item \textbf{$\gamma$-approximate:} Defines how the performance of the algorithms drops as the prediction error $\eta$ increases. Function $\gamma$($\eta$) represents the competitive ratio based on the prediction error $\eta$.
+\end{enumerate}
+
+Therefore, the goal is to develop an algorithm that is consistent (low $\alpha$) when the ML prediction is good, and maintain robustness (reasonable $\beta$) when predictions are bad.
+ 
+It is important to note that this model can be used for other worst-case performance measures. For instance, Chen et al.\cite{chenFasterFundamentalGraph2022} 
+demonstrated faster algorithms for bipartite matching using learned predictions, 
+Khodak et al.\cite{khodakLearningPredictionsAlgorithms2022} provided a general theory on how to efficiently learn these predictors 
+and Bernstein et al.\cite{bernsteinDistancepreservingGraphContractions2019} explored distance-preserving graph contractions to optimize large networks
+
+
+\section{Thesis Contributions}
+Within this framework we will examine the algorithm proposed by Willem Feijen and Guido Schäfer\cite{feijenDijkstrasAlgorithmPredictions2023},
+\textsc{DIJKSTRA-PREDICTION}, for the \textit{single-source many-targets shortest path problem (SSMTSP)}.
+The algorithm they propose uses the learned prediction to prune the search space, removing nodes that deviate from the optimal path. 
+The result is a significant reduction of the number of priority queue operation needed.
+We will also help visualize the efficiency of the algorithm through a custom built visualization tool, 
+further highlighting the differences between the classical greedy approach and augmented learning approach.  
+
+Specifically, the contributions of this thesis are as follows:
+
+\begin{itemize}
+    \item{Algorithmic Implementation: We provide an implementation of the \textsc{DIJKSTRA-PREDICTION}\cite{feijenDijkstrasAlgorithmPredictions2023} algorithm for the verification of the efficiency of the algorithm. We benchmark the algortihms again the classical Dijkstra's algorithm and }
+    \item{Interactive Visualization: We develop a full stack application \textit{(using React and Python)} for independent use by any user. This tool allows any user to dynamically construct graphs and visually verify the advantage of pruning, turning the abstract search space into a visual experience}
+    \item{Experimental Evaluation: We conduct extensive experiments using large scale random graphs to independently verify the claims regarding the performance of the algorithms. We measure the trade off between consistency and robustness, quantifying the reduction of priority queue operations. We also provide extensive graphical analysis on these experiments.}
+\end{itemize}
+
+\section{Thesis Structure}
+Following the introduction, the goal of this thesis is to guide the reader from the theoretical concepts to the implementation, visualization and experimental validation of the DIJKSTRA-PREDICTION algorithm. More specifically:
+\begin{itemize}
+    \item Chapter 2 showcases the theoretical background needed regarding Graph Theory and introduces known algorithms for the Shortest Path Problem, such as DIJKSTRA. We further examine different pruning techniques that set the stage for learning-augmented approaches.
+    
+    \item Chapter 3 introduces and examines \textit{Algorithms with Predictions} through the concepts of Consistency and Robustness and presents the theoretical analysis of the \textsc{DIJKSTRA-PREDICTION} algorithm proposed by Feijen and Schäfer\cite{feijenDijkstrasAlgorithmPredictions2023}.
+    
+    \item Chapter 4 showcases the contributions of this thesis through the development of a full stack visualization application (made with React and Python) that may be used by any user for real time analysis of the \textsc{DIJKSTRA-PREDICTION} algorithm in comparison to the \textsc{DIJKSTRA} algorithm.
+    
+    \item Chapter 5 presents the experimental setup and the methodology used for the creation of large scale random graphs as well as trap scenarios that showcase the effectiveness of the algorithm.  This chapter also includes the results of the experiements alongside a graphical analysis of the results.
+    
+    \item Chapter 6 summarizes the key findings of the thesis and suggests directions for future work in the field of learning-augmented algorithms for graph problems.
+\end{itemize}
