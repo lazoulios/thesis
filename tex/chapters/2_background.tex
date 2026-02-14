@@ -7,4 +7,25 @@ We will also provide a brief overview of classical algorithms for the solution o
 as well as newer algorithms developed in the area of \textit{Algorithms with Predictions} (or \textit{Learning Augmented Algorithms}).
 
 \section{Graph Theory Basics}
-A graph $G$ is defined as a pair $(V, E)$ where $V$ is a set of vertices (or nodes) and $E$ is a set of edges (or arcs) that connect pairs of vertices.
+We will start by defining some basic graph theory concepts that will be used throughout the thesis.
+For the purposes of this thesis, we will use the standard notations as described in Cormen et al.\cite{cormenIntroductionAlgorithms2009}.
+
+%definitions below are based on Cormen et al. Introduction to Algorithms (2009). if i used a wrong definition please let me know :) 
+A \textit{directed graph} $G$ is defined as an ordered pair $G=(V, E)$ where $V$ is a non-empty set of vertices (or nodes/points) and $E$ is a set of edges (or arcs/lines) that connect pairs of vertices.
+We will denote the number of vertices as $n = |V|$ and the number of edges as $m = |E|$.
+
+A \textit{weighted graph} is a graph $G$ where each edge has a numerical value or \textit{weight} (or \textit{cost}) that represents the cost of traversing that edge.
+For a given edge $e \in E$, we will denote its weight as $w(e)$.
+We define a weight function $w: E \rightarrow \mathbb{R}_{\geq 0}$ that assigns a non-negative real number to each edge in the graph.
+The assumption of non-negative weights is necessary for the correctness of Dijkstra's algorithm, which we will revisit on Section 2.3.
+
+A \textit{path} $P$ is defined as a sequence of vertices $P = (v_1, v_2, ..., v_k)$ from a source vertex $s$ to a target vertex $t$ 
+such that for $v_1 = s$, $v_k = t$, and $(v_i, v_{i+1}) \in E$ for all $1 \leq i < k$.
+The \textit{cost} (or \textit{length}) of a path $P$ is defined as the sum of the weights of the edges in the path, i.e.
+
+\begin{equation}
+    w(P) = \sum_{i=1}^{k-1} w(v_i, v_{i+1})
+\end{equation}
+
+We denote \textit{Shortest Path Distance} from $s$ to $t$ as $\delta(s, t)$, which is the minimum cost from $s$ to $t$ compared to all possible paths from $s$ to $t$. 
+If no path exists from $s$ to $t$, we define $\delta(s, t) = \infty$.
