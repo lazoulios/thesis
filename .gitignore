@@ -210,7 +210,6 @@ tool: *.fdb_latexmk
 *.bbl
 *.blg
 *.fdb_latexmk
-images/
 
 #will prob remove this later
 appendices/
