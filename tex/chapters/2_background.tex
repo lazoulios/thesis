@@ -8,7 +8,8 @@ as well as newer algorithms developed in the area of \textit{Algorithms with Pre
 
 \section{Graph Theory Basics}
 We will start by defining some basic graph theory concepts that will be used throughout the thesis.
-For the purposes of this thesis, we will use the standard notations as described in Cormen et al.\cite{cormenIntroductionAlgorithms2009}.
+For the purposes of this thesis, we will use the standard notations as described in Cormen et al.\cite{cormenIntroductionAlgorithms2009}
+\footnote{Definitions and notation follow Cormen et al.~\cite{cormenIntroductionAlgorithms2009}, specifically Appendix B.4 (Graph Theory)}
 
 %definitions below are based on Cormen et al. Introduction to Algorithms (2009). if i used a wrong definition please let me know :) 
 A \textit{directed graph} $G$ is defined as an ordered pair $G=(V, E)$ where $V$ is a non-empty set of vertices (or nodes/points) and $E$ is a set of edges (or arcs/lines) that connect pairs of vertices.
@@ -29,3 +30,27 @@ The \textit{cost} (or \textit{length}) of a path $P$ is defined as the sum of th
 
 We denote \textit{Shortest Path Distance} from $s$ to $t$ as $\delta(s, t)$, which is the minimum cost from $s$ to $t$ compared to all possible paths from $s$ to $t$. 
 If no path exists from $s$ to $t$, we define $\delta(s, t) = \infty$.
+
+\section{The Shortest Path Problem}
+The Shortest Path Problem is one of the most studied problems in graph theory.
+The problem focuses on finding the minimum cost from a starting vertex $s$ to a every other vertex $v \in V$
+In other words finding the \textit{Shortest Path Distance} from $s$ to all $v \in V$ similarly to how we previously mentioned ($\delta(s,v)$), and construct the corresponding paths that achieve this cost.
+
+This problem is used in technologies we use daily such as in GPS navigation, network routing, logistic networks and generally in any path finding need.
+While many simple cases can be solved easily just by intuition, in today's era of Big Data we require the use of algorithms (like \textsc{DIJKSTRA}) to solve more complex and interconnected cases.
+
+\subsection{SPP Variations}
+There are many variations of the Shortest Path Problem that were analyzed and studied in order to satisfy the different needs of each use case.
+
+The All-Pair Shortest Path (APSP) Problem for example searches for the shortest path between every possible pair of nodes ($u , v$)in a graph.
+A famous algorithm for the solution of this problem was designed by Robert W. Floyd\cite{floydAlgorithm97Shortest1962} in 1962 with a time complexity of $O(V^3)$.
+Further more, in the cases of sparse graphs an algorithm was designed by Donald B. Johnson\cite{johnsonEfficientAlgorithmsShortest} in 1977 further reducing the time complexity to $O(V^2\log V+VE)$
+(Although the algorithm performs the same of slightly worse in the case of dense graphs).
+
+The Single-Destination Shortest Path (SDSP) Problem searches for the shortest path from every node $v \in V$ to a single target node $t$. 
+In this case one can solve the problem simply by reversing the order of the graph edges and running Dijkstra's algorithm\cite{dijkstraNoteTwoProblems1959}.
+Notably, in the case of an unordered graph the solution for the Single-Destination Shortest Path is the same as the solution of the Single-Source Shortest Path.
+
+Lastly, another notable variation to mention is the k-Shortest Path (kSP) Problem which instead of searching for only the shortest possible path, it searches for the k-shortest possible paths. 
+This variation is commonly used in navigation systems offering user an alternative route to take besides the shortest one possible. 
+A solution for this problem was designed by Jin Y. Yen\cite{yenFindingShortestLoopless1971a} in 1971 by executing Dijkstra's algorithms $O(n)$ times for each of the k shortest paths with a time complexity of $O(kn(m+nlogn))$.
