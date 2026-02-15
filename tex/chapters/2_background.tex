@@ -17,8 +17,10 @@ We will denote the number of vertices as $n = |V|$ and the number of edges as $m
 
 A \textit{weighted graph} is a graph $G$ where each edge has a numerical value or \textit{weight} (or \textit{cost}) that represents the cost of traversing that edge.
 For a given edge $e \in E$, we will denote its weight as $w(e)$.
-We define a weight function $w: E \rightarrow \mathbb{R}_{\geq 0}$ that assigns a non-negative real number to each edge in the graph.
-The assumption of non-negative weights is necessary for the correctness of Dijkstra's algorithm, which we will revisit on Section 2.3.
+We define a weight function $w: E \rightarrow \mathbb{R}_{\geq 0}$
+that assigns a non-negative
+\footnote{The assumption of non-negative weights is necessary for the correctness of Dijkstra's algorithm, which we will revisit on Section 2.3.}
+real number to each edge in the graph.
 
 A \textit{path} $P$ is defined as a sequence of vertices $P = (v_1, v_2, ..., v_k)$ from a source vertex $s$ to a target vertex $t$ 
 such that for $v_1 = s$, $v_k = t$, and $(v_i, v_{i+1}) \in E$ for all $1 \leq i < k$.
@@ -42,15 +44,76 @@ While many simple cases can be solved easily just by intuition, in today's era o
 \subsection{SPP Variations}
 There are many variations of the Shortest Path Problem that were analyzed and studied in order to satisfy the different needs of each use case.
 
-The All-Pair Shortest Path (APSP) Problem for example searches for the shortest path between every possible pair of nodes ($u , v$)in a graph.
-A famous algorithm for the solution of this problem was designed by Robert W. Floyd\cite{floydAlgorithm97Shortest1962} in 1962 with a time complexity of $O(V^3)$.
-Further more, in the cases of sparse graphs an algorithm was designed by Donald B. Johnson\cite{johnsonEfficientAlgorithmsShortest} in 1977 further reducing the time complexity to $O(V^2\log V+VE)$
+The \textit{All-Pair Shortest Path} (APSP) Problem for example searches for the shortest path between every possible pair of nodes ($u , v$)in a graph.
+A famous algorithm for the solution of this problem was designed by Robert W. Floyd\cite{floydAlgorithm97Shortest1962} in 1962 with a time complexity of $O(n^3)$.
+Further more, in the cases of sparse graphs an algorithm was designed by Donald B. Johnson\cite{johnsonEfficientAlgorithmsShortest} in 1977 further reducing the time complexity to $O(n^2\log n+nm)$
 (Although the algorithm performs the same of slightly worse in the case of dense graphs).
 
-The Single-Destination Shortest Path (SDSP) Problem searches for the shortest path from every node $v \in V$ to a single target node $t$. 
-In this case one can solve the problem simply by reversing the order of the graph edges and running Dijkstra's algorithm\cite{dijkstraNoteTwoProblems1959}.
-Notably, in the case of an unordered graph the solution for the Single-Destination Shortest Path is the same as the solution of the Single-Source Shortest Path.
+The \textit{Single-Destination Shortest Path} (SDSP) Problem searches for the shortest path from every node $v \in V$ to a single target node $t$. 
+In this case one can solve the problem simply by reversing the order of the graph edges and running Dijkstra's algorithm\cite{dijkstraNoteTwoProblems1959} (which we will develop on Section 2.3).
+It is important to note that in the case of an unordered graph the solution for the Single-Destination Shortest Path is the same as the solution of the Single-Source Shortest Path.
 
-Lastly, another notable variation to mention is the k-Shortest Path (kSP) Problem which instead of searching for only the shortest possible path, it searches for the k-shortest possible paths. 
+Lastly, another notable variation to mention is the \textit{k-Shortest Path} (kSP) Problem which instead of searching for only the shortest possible path, it searches for the k-shortest possible paths. 
 This variation is commonly used in navigation systems offering user an alternative route to take besides the shortest one possible. 
-A solution for this problem was designed by Jin Y. Yen\cite{yenFindingShortestLoopless1971a} in 1971 by executing Dijkstra's algorithms $O(n)$ times for each of the k shortest paths with a time complexity of $O(kn(m+nlogn))$.
+A solution for this problem was designed by Jin Y. Yen\cite{yenFindingShortestLoopless1971a} in 1971 by executing Dijkstra's algorithms $O(n)$ times for each of the k shortest paths with a time complexity of $O(kn(E+n\log n))$.
+
+\subsection{Single-Source Many-Targets Shortest Path}
+In this thesis, we focus specifically on the \textit{Single-Source Many-Targets Shortest Path} (SSMTSP) problem, which is the version of the Shortest Path Problem addressed by the algorithm of Feijen and Schäfer~\cite{feijenDijkstrasAlgorithmPredictions2023}.
+
+SSMTSP is a variation of the Single-Source Shortest Path (SSSP) problem, where instead of finding the shortest path from a source node to all other nodes in the graph, we search to find the shortest paths from a single source node to a specific set of target nodes.
+More specifically:
+
+Given a directed, weighted graph $G=(V, E)$, with a weight function 
+\footnote{As mentioned before the assumption of $\mathbb{R}_{\geq 0}$ is necessary for Dijkstra's algorithm}
+$w: E \rightarrow \mathbb{R}_{\geq 0}$
+, a source node $s$, and a set of target nodes $T \subseteq V$, the goal is to find the shortest paths $\delta(s,t)$ from $s$ to all $t \in T$.
+
+This specific version of the problem is used in real-world scenarios such as in Points of Interest (POI) search in navigation systems, where a user in a specific location (source node) may want to find multiples options (target nodes) for a specific destination (e.g. gas stations, restaurants, etc.) and not just the closest one.
+It is also used as a subroutine in logistics and specifically in the Last-Mile Delivery problem, where a distribution center (source node) needs to deliver goods to multiple customers
+\footnote{Usually the delivery routine is calculated with a variation of the \textit{Traveling Salesperson Problem} (TSP), but often the first step is to calculate the shortests paths by solving the SSMTSP problem}
+(target nodes) in the most efficient way possible.
+Furthermore, it is used in Content Delivery Networks (CDNs) where a server (source node) needs to deliver content to multiple users (target nodes) in the most efficient way possible. 
+
+\section{Dijkstra's Algorithm}
+The most famous and widely used algorithm for the SSSP Problem and specifically for our case the SSMTSP Problem is the \textsc{DIJKSTRA} Algorithm\cite{dijkstraNoteTwoProblems1959} which was proposed by Edsger W. Dijkstra in 1959. 
+
+\textsc{DIJKSTRA} works only in cases where the edges have a non-negative weight ($w(e) \ge 0$ for each $e \in E$). 
+
+\subsection{Dijkstra Algorithmic Analysis}
+\textsc{DIJKSTRA}\footnote{Definitions and notation follow Cormen et al.~\cite[Ch.~24.3]{cormenIntroductionAlgorithms2009}, specifically Chapter 24.3 (Dijkstra's Algorithm)} works with a set S of visited (or settled) nodes. 
+At the start $S$ is an empty set, the distance to the source node $s$ is 0 and the distance to the rest of the nodes in the graph is $\infty$.
+We repeat a process of taking the unvisited (or unsettled) node $u \in V-S$ with the minimum distance, adding $u$ to $S$, and \textit{relaxing} all edges leaving $u$. 
+
+For a given edge $(u, v) \in E$ with weight $w(u, v)$, if the current known distance to $v$ is greater than the distance to $u$ plus the weight of the edge, 
+the algorithm updates (\textit{relaxes}) the distance to $v$:
+
+\begin{equation}
+\text{If } dist(v) > dist(u) + w(u, v) \text{, then update } dist(v) = dist(u) + w(u, v)
+\end{equation}
+
+The exact code implementation of \textsc{DIJKSTRA} we will use is as follows:
+
+\begin{verbatim}
+//TODO: ADD LOCAL DIJKSTRA CODE IMPLEMENTATION
+\end{verbatim}
+
+\textsc{DIJKSTRA} is a greedy algorithm\footnote{"Greedy" algorithms work by making the best choice in any specific step/iteration (local optimal)} 
+since it selects the "lightest" vertex thus selecting a local optimal choice, but unlike most greedy algorithms it guarantees the global optimal result everytime.
+
+As mentioned in the introduction, through the use of \textit{Fibonacci Heaps} as proposed by Fredman and Tarjan\cite{fredmanFibonacciHeapsTheir1987}, 
+\textsc{DIJKSTRA} can achieve a time complexity of O($m$ + $n\log n$) (where $n$ and $m$ are the number of nodes and edges respectively).
+
+\subsection{Dijkstra's Limitations}
+Recently, Duan et al. in their famous paper \textit{Breaking the Sorting Barrier for Directed Single-Source Shortest Paths}\cite{duanBreakingSortingBarrier2025}, 
+improved the time complexity of \textsc{DIJKSTRA} to $O(m \log^{2/3}n)$, 
+yet \textsc{DIJKSTRA} still has a fundamental flaw, it's working "blind" without knowing whether or not if the path it is exploring will lead towards a target node $t \in T$. 
+
+Specifically in our case, on the SSMTSP problem, even if \textsc{DIJKSTRA} manages to find the shortest path to one of the target nodes 
+it still has many paths to explores and thus many more cases where it may explore in completely wrong direction leading to the calculation of irrelevant regions.
+
+This inefficiency highlights the need of algorithms which use external information.
+Heuristic algorithms like A*\cite{hartFormalBasisHeuristic1968b} attempt to combat this issue, but even then, we require specific knowledge to calculate the heuristic value $h(n)$, 
+on which we have the inability to dynamically re-calculate computationally all the time for multiple targets.
+
+\textsc{DIJKSTRA-PREDICTION} on the other hand, tackles the issue by utilizing machine learning techniques to prune the search space all-together, skipping irrelevant edges, 
+while still maintaining an optimal shortest path.
