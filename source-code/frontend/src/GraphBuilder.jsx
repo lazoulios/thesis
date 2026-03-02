@@ -356,9 +356,6 @@ export default function GraphBuilder() {
     const newEdges = [];
     
     // the main path
-    // Nodes 1 -> 2 -> 3 -> 4 (Target)
-    // Αυτά θα τα βάλουμε πάνω ψηλά (y=50)
-    // Θα έχουν μεγάλο βάρος σύνδεσης (π.χ. Cost=10)
     [1, 2, 3, 4].forEach((id, index) => {
         newNodes.push({
             id: `${id}`,
@@ -367,7 +364,7 @@ export default function GraphBuilder() {
             className: id === 4 ? 'thesis-node target-node' : (id === 1 ? 'thesis-node start-node' : 'thesis-node'),
         });
         
-        // Σύνδεση με τον προηγούμενο
+        // connect to the previous
         if (index > 0) {
             newEdges.push({
                 id: `e${id-1}-${id}`,
@@ -380,10 +377,6 @@ export default function GraphBuilder() {
         }
     });
 
-    // the trap part
-    // Nodes 1 -> 5 -> 6 -> 7 -> 8
-    // Αυτά θα τα βάλουμε κάτω (y=250)
-    // Θα έχουν πολύ μικρό βάρος (π.χ. Cost=1), άρα ο Dijkstra θα έρθει εδώ ΠΡΩΤΑ
     [5, 6, 7, 8].forEach((id, index) => {
         newNodes.push({
             id: `${id}`,
@@ -393,14 +386,14 @@ export default function GraphBuilder() {
         });
     });
 
-    // Connection from Start (1) to the beginning of the trap (5)
+    // trap edge from 1 to 5
     newEdges.push({
         id: `e1-5`, source: '1', target: '5', 
         animated: true, label: 'Cost: 1', 
         style: { stroke: '#ef4444', strokeWidth: 2 } 
     });
 
-    // Συνδέσεις μέσα στην παγίδα (5->6->7->8)
+    // trap edges from 5 to 8
     const trapNodes = [5, 6, 7, 8];
     for (let i = 0; i < trapNodes.length - 1; i++) {
         newEdges.push({
@@ -425,7 +418,7 @@ export default function GraphBuilder() {
     }
   };
 
-  // --- Export με ρόλους ---
+  // export for backend
   const printGraphData = () => {
     const graphData = {
         startNode: startNode,
@@ -440,7 +433,113 @@ export default function GraphBuilder() {
     console.log("Graph Data:", graphData);
     alert(`Exported!\nStart: ${startNode}\nTargets: ${targetNodes.size}\nCheck Console.`);
   };
+  
+const animateDijkstra = (visitedSteps, pathsDict) => {
+    setNodes((nds) => nds.map(n => ({ 
+      ...n, className: n.className.replace(/ visited| path-node/g, '') 
+    })));
+    setEdges((eds) => eds.map(e => ({ 
+      ...e, className: (e.className || '').replace(/ visited-edge| path-edge/g, '') 
+    })));
 
+    let delay = 0;
+    const timePerStep = 1000;
+
+    //color steps
+    visitedSteps.forEach((step) => {
+        setTimeout(() => {
+            //color node
+            setNodes((nds) => nds.map((n) => {
+                if (n.id === String(step.node) && !n.className.includes('start-node') && !n.className.includes('target-node')) {
+                    return { ...n, className: n.className + ' visited' };
+                }
+                return n;
+            }));
+            
+            //color edge
+            if (step.edge) {
+                setEdges((eds) => eds.map((e) => {
+                    if (e.id === step.edge) {
+                        return { ...e, className: (e.className || '') + ' visited-edge' };
+                    }
+                    return e;
+                }));
+            }
+        }, delay);
+        delay += timePerStep;
+    });
+
+    // coloring
+    setTimeout(() => {
+        const pathNodesSet = new Set();
+        const pathEdgesSet = new Set();
+
+        Object.values(pathsDict).forEach(pathArray => {
+            for (let i = 0; i < pathArray.length; i++) {
+                pathNodesSet.add(String(pathArray[i]));
+                if (i < pathArray.length - 1) {
+                    const source = String(pathArray[i]);
+                    const target = String(pathArray[i+1]);
+                    const edge = edges.find(e => e.source === source && e.target === target);
+                    if (edge) pathEdgesSet.add(edge.id);
+                }
+            }
+        });
+
+        setNodes((nds) => nds.map((n) => {
+            if (pathNodesSet.has(n.id) && !n.className.includes('start-node') && !n.className.includes('target-node')) {
+                return { ...n, className: n.className.replace(' visited', '') + ' path-node' };
+            }
+            return n;
+        }));
+
+        setEdges((eds) => eds.map((e) => {
+            if (pathEdgesSet.has(e.id)) {
+                return { ...e, className: (e.className || '').replace(' visited-edge', '') + ' path-edge' };
+            }
+            return e;
+        }));
+
+    }, delay + 500);
+  };
+
+  const runAlgorithms = async () => {
+    if (!startNode || targetNodes.size === 0) {
+      alert("Please select a Start Node and at least one Target Node!");
+      return;
+    }
+
+    const graphData = {
+        startNode: startNode,
+        targetNodes: Array.from(targetNodes),
+        nodes: nodes,
+        edges: edges.map(e => ({ 
+            id: e.id, // <--- ΣΗΜΑΝΤΙΚΟ: Στέλνουμε το ID στο backend πλέον
+            source: e.source, 
+            target: e.target, 
+            weight: e.label ? parseInt(e.label.replace('Cost: ', '')) : 1 
+        }))
+    };
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/solve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(graphData),
+      });
+
+      const data = await response.json();
+      
+      // Καλούμε το animation με τα νέα δεδομένα (visited_steps)
+      animateDijkstra(data.classic_dijkstra.visited_steps, data.classic_dijkstra.paths);
+      
+    } catch (error) {
+      console.error("Error connecting to backend:", error);
+      alert("Failed to connect to Python backend.");
+    }
+  };
+
+  // side buttons
   return (
     <div className="graph-container">
       
@@ -501,7 +600,7 @@ export default function GraphBuilder() {
                 disabled={!isNodeSelected}
                 title="Set selected node as Start (Source)"
             >
-                <span>🚩</span> Set Start
+                Set Start
             </button>
             
             <button 
@@ -510,7 +609,7 @@ export default function GraphBuilder() {
                 disabled={!isNodeSelected}
                 title="Toggle selected node as Target"
             >
-                <span>🎯</span> Toggle Target
+                Toggle Target
             </button>
 
             <button 
@@ -518,39 +617,41 @@ export default function GraphBuilder() {
                 onClick={deleteSelected}
                 disabled={!nodes.some(n => n.selected) && !edges.some(e => e.selected)}
             >
-                <span>🗑️</span> Delete Selected
+                <span></span> Delete Selected
             </button>
 
             <hr style={{width: '100%', border: '0', borderTop: '1px solid #eee', margin: '10px 0'}}/>
 
             <button className="btn btn-clear" onClick={clearGraph}>
-                <span>🧹</span> Clear All
+                Clear All
             </button>
 
             <hr style={{width: '100%', border: '0', borderTop: '1px solid #eee', margin: '10px 0'}}/>
 
             <div style={{display: 'flex', gap: '5px', marginTop: '5px'}}>
                 <button className="btn" style={{backgroundColor: '#64748b', color: 'white', marginTop: '0'}} onClick={downloadGraph} title="Save to File">
-                    <span>💾</span> Save
+                    Save
                 </button>
                 <button className="btn" style={{backgroundColor: '#475569', color: 'white', marginTop: '0'}} onClick={triggerLoad} title="Load from File">
-                    <span>📂</span> Load
+                    Load
                 </button>
             </div>
 
             <hr style={{width: '100%', border: '0', borderTop: '1px solid #eee', margin: '10px 0'}}/>
 
             <button className="btn btn-random" onClick={generateRandomGraph}>
-                <span>🎲</span> Random Graph
+                <span></span> Random Graph
             </button>
 
             <button className="btn btn-random" style={{marginTop: '5px', backgroundColor: '#e11d48'}} onClick={generateTrapGraph}>
-                <span>🪤</span> Trap Scenario
+                <span></span> Trap Scenario
             </button>
 
             <hr style={{width: '100%', border: '0', borderTop: '1px solid #eee', margin: '5px 0'}}/>
 
-            <button className="btn btn-export" onClick={printGraphData}><span>⬇</span> Export JSON</button>
+            <button className="btn" style={{backgroundColor: '#0284c7', color: 'white', marginTop: '10px'}} onClick={runAlgorithms}>
+              Run Algorithms
+            </button>
         </div>
       </div>
 

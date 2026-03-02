@@ -230,12 +230,11 @@
 }
 
 .btn-clear:hover {
-  background-color: #800c0c; /* Amber 600 */
+  background-color: #800c0c;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
 }
 
-/*default disabled button style*/
 .btn:disabled {
   background-color: #e5e5e5 !important; 
   color: #a3a3a3 !important;           
@@ -259,7 +258,7 @@
 .btn-export {
   background-color: #10b981; 
   color: white;
-  margin-top: auto; /* Σπρώχνει το κουμπί στο τέλος */
+  margin-top: auto;
 }
 .btn-export:hover {
   background-color: #059669;
@@ -267,14 +266,12 @@
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
 }
 
-/* Start Node (Πράσινος) */
 .thesis-node.start-node {
   border-color: #22c55e !important;
   background-color: #dcfce7 !important; 
   box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.3) !important;
 }
 
-/* Target Node (Πορτοκαλί) */
 .thesis-node.target-node {
   border-color: #f97316 !important; 
   background-color: #ffedd5 !important;
@@ -295,7 +292,6 @@
 }
 .btn-target:hover { background-color: #ea580c; }
 
-/* vertex */
 .react-flow__handle {
   width: 10px;       
   height: 10px;
@@ -348,4 +344,29 @@
   ry: 4px;
   stroke: #ddd; 
   stroke-width: 1px;
+}
+
+.thesis-node.visited {
+  background-color: #fef08a !important; 
+  border-color: #eab308 !important;
+  transition: background-color 0.3s ease;
+}
+
+.thesis-node.path-node {
+  background-color: #bbf7d0 !important; 
+  border-color: #22c55e !important;
+  border-width: 3px !important;
+}
+
+.react-flow__edge.visited-edge .react-flow__edge-path {
+  stroke: #eab308 !important; 
+  stroke-width: 3px !important;
+  transition: stroke 0.3s ease, stroke-width 0.3s ease;
+}
+
+.react-flow__edge.path-edge .react-flow__edge-path {
+  stroke: #22c55e !important;
+  stroke-width: 4px !important;
+  filter: drop-shadow(0 0 5px rgba(34, 197, 94, 0.6));
+  transition: stroke 0.3s ease, stroke-width 0.3s ease;
 }
