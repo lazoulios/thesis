@@ -22,7 +22,7 @@ export default function GraphBuilder() {
   const [rfInstance, setRfInstance] = useState(null);
   const fileInputRef = useRef(null);
   
-  // State για το άνοιγμα/κλείσιμο του Sidebar
+  // sidebar states
   const [isSidebarOpen, setSidebarOpen] = useState(true);
 
   const [startNode, setStartNodeState] = useState(null); 
@@ -33,6 +33,8 @@ export default function GraphBuilder() {
   const isNodeSelected = !!selectedNode;
 
   const [edgeWeight, setEdgeWeight] = useState('');
+
+  const [selectedAlgorithm, setSelectedAlgorithm] = useState('classic'); // state for choice of algorithm 
 
   useEffect(() => {
     if (selectedEdge) {
@@ -530,8 +532,16 @@ const animateDijkstra = (visitedSteps, pathsDict) => {
 
       const data = await response.json();
       
-      // Καλούμε το animation με τα νέα δεδομένα (visited_steps)
-      animateDijkstra(data.classic_dijkstra.visited_steps, data.classic_dijkstra.paths);
+      //select which result to animate based on user choice
+      const resultToAnimate = selectedAlgorithm === 'classic' 
+          ? data.classic_dijkstra 
+          : data.dijkstra_prediction;
+
+      animateDijkstra(resultToAnimate.visited_steps, resultToAnimate.paths);
+      
+      // debugging logs
+      console.log(`Classic explored: ${data.classic_dijkstra.visited_steps.length} nodes`);
+      console.log(`Prediction explored: ${data.dijkstra_prediction.visited_steps.length} nodes`);
       
     } catch (error) {
       console.error("Error connecting to backend:", error);
@@ -649,8 +659,24 @@ const animateDijkstra = (visitedSteps, pathsDict) => {
 
             <hr style={{width: '100%', border: '0', borderTop: '1px solid #eee', margin: '5px 0'}}/>
 
-            <button className="btn" style={{backgroundColor: '#0284c7', color: 'white', marginTop: '10px'}} onClick={runAlgorithms}>
-              Run Algorithms
+            <hr style={{width: '100%', border: '0', borderTop: '1px solid #eee', margin: '10px 0'}}/>
+
+            <div style={{ marginBottom: '10px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#333', marginBottom: '5px', display: 'block' }}>
+                    Select Algorithm:
+                </label>
+                <select 
+                    value={selectedAlgorithm} 
+                    onChange={(e) => setSelectedAlgorithm(e.target.value)}
+                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }}
+                >
+                    <option value="classic">Classic Dijkstra</option>
+                    <option value="prediction">Dijkstra-Prediction (GNN)</option>
+                </select>
+            </div>
+
+            <button className="btn" style={{backgroundColor: '#0284c7', color: 'white', marginTop: 'auto'}} onClick={runAlgorithms}>
+                <span></span> Run {selectedAlgorithm === 'classic' ? 'Classic' : 'Prediction'}
             </button>
         </div>
       </div>

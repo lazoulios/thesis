@@ -54,7 +54,7 @@ def solve_shortest_path(payload: GraphPayload):
         },
         # TODO Add dijkstra prediction results here
         "dijkstra_prediction": {
-            "visited_steps": visited, 
+            "visited_steps": [{"node": payload.startNode, "edge": None}], 
             "paths": paths
         }
     }
