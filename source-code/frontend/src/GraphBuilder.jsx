@@ -653,9 +653,9 @@ const animateDijkstra = (visitedSteps, pathsDict) => {
                 <span></span> Random Graph
             </button>
 
-            <button className="btn btn-random" style={{marginTop: '5px', backgroundColor: '#e11d48'}} onClick={generateTrapGraph}>
+            {/*<button className="btn btn-random" style={{marginTop: '5px', backgroundColor: '#e11d48'}} onClick={generateTrapGraph}>
                 <span></span> Trap Scenario
-            </button>
+            </button>*/}
 
             <hr style={{width: '100%', border: '0', borderTop: '1px solid #eee', margin: '5px 0'}}/>
 

@@ -79,7 +79,7 @@ The most famous and widely used algorithm for the SSSP Problem and specifically 
 
 \textsc{DIJKSTRA} works only in cases where the edges have a non-negative weight ($w(e) \ge 0$ for each $e \in E$). 
 
-\subsection{Dijkstra Algorithmic Analysis}
+\subsection{Algorithmic Analysis}
 \textsc{DIJKSTRA}\footnote{Definitions and notation follow Cormen et al.~\cite[Ch.~24.3]{cormenIntroductionAlgorithms2009}, specifically Chapter 24.3 (Dijkstra's Algorithm)} works with a set S of visited (or settled) nodes. 
 At the start $S$ is an empty set, the distance to the source node $s$ is 0 and the distance to the rest of the nodes in the graph is $\infty$.
 We repeat a process of taking the unvisited (or unsettled) node $u \in V-S$ with the minimum distance, adding $u$ to $S$, and \textit{relaxing} all edges leaving $u$. 
@@ -103,7 +103,7 @@ since it selects the "lightest" vertex thus selecting a local optimal choice, bu
 As mentioned in the introduction, through the use of \textit{Fibonacci Heaps} as proposed by Fredman and Tarjan\cite{fredmanFibonacciHeapsTheir1987}, 
 \textsc{DIJKSTRA} can achieve a time complexity of O($m$ + $n\log n$) (where $n$ and $m$ are the number of nodes and edges respectively).
 
-\subsection{Dijkstra's Limitations}
+\subsection{Limitations}
 Recently, Duan et al. in their famous paper \textit{Breaking the Sorting Barrier for Directed Single-Source Shortest Paths}\cite{duanBreakingSortingBarrier2025}, 
 improved the time complexity of \textsc{DIJKSTRA} to $O(m \log^{2/3}n)$, 
 yet \textsc{DIJKSTRA} still has a fundamental flaw, it's working "blind" without knowing whether or not if the path it is exploring will lead towards a target node $t \in T$. 
