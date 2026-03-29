@@ -35,6 +35,7 @@ export default function GraphBuilder() {
   const [edgeWeight, setEdgeWeight] = useState('');
 
   const [selectedAlgorithm, setSelectedAlgorithm] = useState('classic'); // state for choice of algorithm 
+  const [isInfoPanelOpen, setInfoPanelOpen] = useState(false);
 
   useEffect(() => {
     if (selectedEdge) {
@@ -46,6 +47,17 @@ export default function GraphBuilder() {
       setEdgeWeight('');
     }
   }, [selectedEdge]);
+
+  useEffect(() => {
+    const handleEscClose = (event) => {
+      if (event.key === 'Escape') {
+        setInfoPanelOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscClose);
+    return () => window.removeEventListener('keydown', handleEscClose);
+  }, []);
 
   const addNode = () => {
     const newNode = {
@@ -350,6 +362,7 @@ export default function GraphBuilder() {
     }
   };
 
+  /*
   // Generating trap graph which outlines the advantage of our algorithm
   const generateTrapGraph = () => {
     if (!confirm("Generate Trap Graph? This demonstrates Dijkstra inefficiency.")) return;
@@ -419,6 +432,7 @@ export default function GraphBuilder() {
       setTimeout(() => rfInstance.fitView({ padding: 0.8, duration: 800 }), 100);
     }
   };
+  */
 
   // export for backend
   const printGraphData = () => {
@@ -436,74 +450,102 @@ export default function GraphBuilder() {
     alert(`Exported!\nStart: ${startNode}\nTargets: ${targetNodes.size}\nCheck Console.`);
   };
   
-const animateDijkstra = (visitedSteps, pathsDict) => {
-    setNodes((nds) => nds.map(n => ({ 
-      ...n, className: n.className.replace(/ visited| path-node/g, '') 
-    })));
-    setEdges((eds) => eds.map(e => ({ 
-      ...e, className: (e.className || '').replace(/ visited-edge| path-edge/g, '') 
-    })));
+const animateDijkstra = (visitedSteps, pathsDict, queueSteps = []) => {
+  setNodes((nds) => nds.map(n => ({
+    ...n,
+    className: n.className.replace(/ visited| path-node| queue-node/g, '')
+  })));
+  setEdges((eds) => eds.map(e => ({
+    ...e,
+    className: (e.className || '').replace(/ visited-edge| path-edge/g, '')
+  })));
 
-    let delay = 0;
-    const timePerStep = 1000;
+  let delay = 0;
+  const timePerStep = 1000;
 
-    //color steps
-    visitedSteps.forEach((step) => {
-        setTimeout(() => {
-            //color node
-            setNodes((nds) => nds.map((n) => {
-                if (n.id === String(step.node) && !n.className.includes('start-node') && !n.className.includes('target-node')) {
-                    return { ...n, className: n.className + ' visited' };
-                }
-                return n;
-            }));
-            
-            //color edge
-            if (step.edge) {
-                setEdges((eds) => eds.map((e) => {
-                    if (e.id === step.edge) {
-                        return { ...e, className: (e.className || '') + ' visited-edge' };
-                    }
-                    return e;
-                }));
-            }
-        }, delay);
-        delay += timePerStep;
+  // Animate steps
+  for (let i = 0; i < visitedSteps.length; i++) {
+    setTimeout(() => {
+      // Clear previous queue highlight
+      setNodes((nds) => nds.map((n) => ({
+        ...n,
+        className: n.className.replace(/ queue-node/g, '')
+      })));
+
+      // Highlight current queue (yellow)
+      if (queueSteps && queueSteps[i]) {
+        const queueNodeIds = new Set(queueSteps[i].map(q => String(q.node)));
+        setNodes((nds) => nds.map((n) => {
+          if (queueNodeIds.has(n.id) && !n.className.includes('start-node') && !n.className.includes('target-node') && !n.className.includes('visited')) {
+            return { ...n, className: n.className + ' queue-node' };
+          }
+          return n;
+        }));
+      }
+
+      // Highlight visited node
+      const step = visitedSteps[i];
+      setNodes((nds) => nds.map((n) => {
+        if (n.id === String(step.node) && !n.className.includes('start-node') && !n.className.includes('target-node')) {
+          return { ...n, className: n.className.replace(' queue-node', '') + ' visited' };
+        }
+        return n;
+      }));
+
+      // Highlight visited edge
+      if (step.edge) {
+        setEdges((eds) => eds.map((e) => {
+          if (e.id === step.edge) {
+            return { ...e, className: (e.className || '') + ' visited-edge' };
+          }
+          return e;
+        }));
+      }
+    }, delay);
+    delay += timePerStep;
+  }
+
+  // Final queue state (clear yellow)
+  setTimeout(() => {
+    setNodes((nds) => nds.map((n) => ({
+      ...n,
+      className: n.className.replace(/ queue-node/g, '')
+    })));
+  }, delay);
+
+  // Path coloring
+  setTimeout(() => {
+    const pathNodesSet = new Set();
+    const pathEdgesSet = new Set();
+
+    Object.values(pathsDict).forEach(pathArray => {
+      for (let i = 0; i < pathArray.length; i++) {
+        pathNodesSet.add(String(pathArray[i]));
+        if (i < pathArray.length - 1) {
+          const source = String(pathArray[i]);
+          const target = String(pathArray[i+1]);
+          const edge = edges.find(e => e.source === source && e.target === target);
+          if (edge) pathEdgesSet.add(edge.id);
+        }
+      }
     });
 
-    // coloring
-    setTimeout(() => {
-        const pathNodesSet = new Set();
-        const pathEdgesSet = new Set();
+    setNodes((nds) => nds.map((n) => {
+      if (pathNodesSet.has(n.id) && !n.className.includes('start-node') && !n.className.includes('target-node')) {
+        return { ...n, className: n.className.replace(' visited', '') + ' path-node' };
+      }
+      return n;
+    }));
 
-        Object.values(pathsDict).forEach(pathArray => {
-            for (let i = 0; i < pathArray.length; i++) {
-                pathNodesSet.add(String(pathArray[i]));
-                if (i < pathArray.length - 1) {
-                    const source = String(pathArray[i]);
-                    const target = String(pathArray[i+1]);
-                    const edge = edges.find(e => e.source === source && e.target === target);
-                    if (edge) pathEdgesSet.add(edge.id);
-                }
-            }
-        });
+    setEdges((eds) => eds.map((e) => {
+      if (pathEdgesSet.has(e.id)) {
+        return { ...e, className: (e.className || '').replace(' visited-edge', '') + ' path-edge' };
+      }
+      return e;
+    }));
 
-        setNodes((nds) => nds.map((n) => {
-            if (pathNodesSet.has(n.id) && !n.className.includes('start-node') && !n.className.includes('target-node')) {
-                return { ...n, className: n.className.replace(' visited', '') + ' path-node' };
-            }
-            return n;
-        }));
-
-        setEdges((eds) => eds.map((e) => {
-            if (pathEdgesSet.has(e.id)) {
-                return { ...e, className: (e.className || '').replace(' visited-edge', '') + ' path-edge' };
-            }
-            return e;
-        }));
-
-    }, delay + 500);
-  };
+  }, delay + 500);
+};
 
   const runAlgorithms = async () => {
     if (!startNode || targetNodes.size === 0) {
@@ -516,7 +558,7 @@ const animateDijkstra = (visitedSteps, pathsDict) => {
         targetNodes: Array.from(targetNodes),
         nodes: nodes,
         edges: edges.map(e => ({ 
-            id: e.id, // <--- ΣΗΜΑΝΤΙΚΟ: Στέλνουμε το ID στο backend πλέον
+            id: e.id, 
             source: e.source, 
             target: e.target, 
             weight: e.label ? parseInt(e.label.replace('Cost: ', '')) : 1 
@@ -533,11 +575,15 @@ const animateDijkstra = (visitedSteps, pathsDict) => {
       const data = await response.json();
       
       //select which result to animate based on user choice
-      const resultToAnimate = selectedAlgorithm === 'classic' 
-          ? data.classic_dijkstra 
+      const resultToAnimate = selectedAlgorithm === 'classic'
+          ? data.classic_dijkstra
           : data.dijkstra_prediction;
 
-      animateDijkstra(resultToAnimate.visited_steps, resultToAnimate.paths);
+      animateDijkstra(
+        resultToAnimate.visited_steps,
+        resultToAnimate.paths,
+        resultToAnimate.queue_steps // may be undefined for old runs
+      );
       
       // debugging logs
       console.log(`Classic explored: ${data.classic_dijkstra.visited_steps.length} nodes`);
@@ -671,7 +717,7 @@ const animateDijkstra = (visitedSteps, pathsDict) => {
                     style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }}
                 >
                     <option value="classic">Classic Dijkstra</option>
-                    <option value="prediction">Dijkstra-Prediction (GNN)</option>
+                    <option value="prediction">Dijkstra-Prediction (MLP)</option>
                 </select>
             </div>
 
@@ -680,6 +726,87 @@ const animateDijkstra = (visitedSteps, pathsDict) => {
             </button>
         </div>
       </div>
+
+      <div className="graph-legend" aria-label="Graph color legend">
+        <h4 className="graph-legend-title">Legend</h4>
+        <div className="graph-legend-list">
+          <div className="graph-legend-item">
+            <span className="legend-swatch legend-node-default"></span>
+            <span>Regular node</span>
+          </div>
+          <div className="graph-legend-item">
+            <span className="legend-swatch legend-node-start"></span>
+            <span>Start node</span>
+          </div>
+          <div className="graph-legend-item">
+            <span className="legend-swatch legend-node-target"></span>
+            <span>Target node</span>
+          </div>
+          <div className="graph-legend-item">
+            <span className="legend-swatch legend-node-visited"></span>
+            <span>Visited node</span>
+          </div>
+          <div className="graph-legend-item">
+            <span className="legend-swatch legend-node-queue"></span>
+            <span>Queue node (step)</span>
+          </div>
+          <div className="graph-legend-item">
+            <span className="legend-swatch legend-node-path"></span>
+            <span>Shortest path node</span>
+          </div>
+          <div className="graph-legend-item">
+            <span className="legend-line legend-edge-default"></span>
+            <span>Regular edge</span>
+          </div>
+          <div className="graph-legend-item">
+            <span className="legend-line legend-edge-visited"></span>
+            <span>Visited edge</span>
+          </div>
+          <div className="graph-legend-item">
+            <span className="legend-line legend-edge-path"></span>
+            <span>Shortest path edge</span>
+          </div>
+        </div>
+      </div>
+
+      <button
+        className="info-toggle-btn"
+        onClick={() => setInfoPanelOpen((isOpen) => !isOpen)}
+        title="Open thesis notes"
+        aria-label="Open thesis notes"
+      >
+        i
+      </button>
+
+      {isInfoPanelOpen && (
+        <div
+          className="thesis-info-overlay"
+          onClick={() => setInfoPanelOpen(false)}
+          aria-label="Thesis information overlay"
+        >
+          <div
+            className="thesis-info-panel"
+            onClick={(e) => e.stopPropagation()}
+            aria-label="Thesis information panel"
+          >
+            <div className="thesis-info-header">
+              <h4>Thesis Notes</h4>
+              <button
+                className="thesis-info-close"
+                onClick={() => setInfoPanelOpen(false)}
+                title="Close notes"
+                aria-label="Close notes"
+              >
+                x
+              </button>
+            </div>
+            <div className="thesis-info-content">
+              TO BE FILLED
+            </div>
+          </div>
+        </div>
+      )}
+
 
       <ReactFlow
         nodes={nodes}
@@ -690,13 +817,30 @@ const animateDijkstra = (visitedSteps, pathsDict) => {
         onInit={setRfInstance}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         minZoom={0.5}
-        maxZoom={2} 
-        deleteKeyCode={['Backspace', 'Delete']} 
+        maxZoom={2}
+        deleteKeyCode={['Backspace', 'Delete']}
       >
         <Background color="#aaa" gap={20} size={1} />
         <Controls position="top-right" />
-        <MiniMap style={{height: 100, border: '1px solid #ddd'}} />
+        <MiniMap style={{ height: 100, border: '1px solid #ddd' }} />
       </ReactFlow>
+
+      {/* Bottom playback panel */}
+      <div className="bottom-panel">
+        <button className="btn btn-bottom-panel" title="Previous Step">
+          &#9664;
+        </button>
+        <button className="btn btn-bottom-panel" title="Play">
+          &#9654;
+        </button>
+        <button className="btn btn-bottom-panel" title="Pause">
+          &#10073;&#10073;
+        </button>
+        <button className="btn btn-bottom-panel" title="Next Step">
+          &#9654;&#9654;
+        </button>
+      </div>
+
     </div>
   );
 }
