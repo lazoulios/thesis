@@ -242,3 +242,6 @@ dist-ssr
 
 
 /data/
+/models/
+/mlruns/
+mlflow.db

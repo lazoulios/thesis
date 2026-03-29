@@ -18,13 +18,12 @@ class GraphPayload(BaseModel):
     edges: List[EdgeModel]
 
 def generate_random_graph() -> GraphPayload:
-    min_nodes = 8
-    max_nodes = 25
-    node_count = random.randint(min_nodes, max_nodes)
+    node_count = 100
     
     columns = math.ceil(math.sqrt(node_count))
     nodes = [{'id': str(i)} for i in range(1, node_count + 1)]
     edges = []
+
 
     for i in range(1, node_count + 1):
         num_edges = 1 if random.random() > 0.4 else 2
@@ -72,7 +71,7 @@ def generate_random_graph() -> GraphPayload:
         edges=edges
     )
 
-def extract_trace_and_distance(payload: GraphPayload, i0=3):
+def extract_trace_and_distance(payload: GraphPayload, i0=10):
     graph = {node['id']: [] for node in payload.nodes}
     for edge in payload.edges:
         graph[edge.source].append((edge.target, edge.weight))
@@ -128,7 +127,7 @@ def extract_trace_and_distance(payload: GraphPayload, i0=3):
 
     return {"trace": trace, "y": final_distance}
 
-def generate_dataset(num_graphs, i0=3, filename="training_data.csv"):
+def generate_dataset(num_graphs, i0, filename="training_data.csv"):
     print(f"Generating {num_graphs} graphs... This might take a minute.")
     
     with open(filename, mode='w', newline='') as file:
@@ -150,10 +149,10 @@ def generate_dataset(num_graphs, i0=3, filename="training_data.csv"):
                 writer.writerow(row)
                 valid_graphs += 1
                 
-                if valid_graphs % 5000 == 0:
+                if valid_graphs % 1000 == 0:
                     print(f"Generated {valid_graphs} valid graphs...")
 
     print(f"Done! Dataset saved to {filename}")
 
 if __name__ == "__main__":
-    generate_dataset(num_graphs=50000, i0=3)
+    generate_dataset(num_graphs=20000, i0=10)
