@@ -74,7 +74,7 @@ It is also used as a subroutine in logistics and specifically in the Last-Mile D
 (target nodes) in the most efficient way possible.
 Furthermore, it is used in Content Delivery Networks (CDNs) where a server (source node) needs to deliver content to multiple users (target nodes) in the most efficient way possible. 
 
-\section{Dijkstra's Algorithm}
+\section{DIJKSTRA Algorithm}
 The most famous and widely used algorithm for the SSSP Problem and specifically for our case the SSMTSP Problem is the \textsc{DIJKSTRA} Algorithm\cite{dijkstraNoteTwoProblems1959} which was proposed by Edsger W. Dijkstra in 1959. 
 
 \textsc{DIJKSTRA} works only in cases where the edges have a non-negative weight ($w(e) \ge 0$ for each $e \in E$). 
@@ -92,10 +92,33 @@ the algorithm updates (\textit{relaxes}) the distance to $v$:
 \end{equation}
 
 The exact code implementation of \textsc{DIJKSTRA} we will use is as follows:
+\begin{algorithm}[H]
+\caption{DIJKSTRA (G, w, s, T)}
+$d(s) = 0$, $d(v) = \infty$ for all $v \in V \setminus \{s\}$ \tcp*{tentative distances}
+PQ.INSERT$(s, d(s))$\;
+\While{not PQ.EMPTY()}{
+    $u =$ PQ.REMOVE-MIN() \tcp*{u becomes settled}
+    \If{$u \in T$}{
+        \textbf{STOP} \tcp*{stop when u is target}
+    }
+    \For{$(u,v) \in E$}{
+        $tent = d(u) + w(u,v)$ \tcp*{tentative distance of v}
+        RELAX$(u, v, tent)$\;
+    }
+}
+\end{algorithm}
 
-\begin{verbatim}
-//TODO: ADD LOCAL DIJKSTRA CODE IMPLEMENTATION
-\end{verbatim}
+\begin{algorithm}[H]
+\caption{RELAX(u, v, tent)}
+\If{$d(v) > tent$}{
+    \If{$d(v) == \infty$}{
+        PQ.INSERT$(v, tent)$ \tcp*{add v to PQ}
+    }\Else{
+        PQ.DECREASE-PRIO$(v, tent)$ \tcp*{decrease priority}
+    }
+    $d(v) = tent$ \tcp*{update distance of v}
+}
+\end{algorithm}
 
 \textsc{DIJKSTRA} is a greedy algorithm\footnote{"Greedy" algorithms work by making the best choice in any specific step/iteration (local optimal)} 
 since it selects the "lightest" vertex thus selecting a local optimal choice, but unlike most greedy algorithms it guarantees the global optimal result everytime.
@@ -116,4 +139,4 @@ Heuristic algorithms like A*\cite{hartFormalBasisHeuristic1968b} attempt to comb
 on which we have the inability to dynamically re-calculate computationally all the time for multiple targets.
 
 \textsc{DIJKSTRA-PREDICTION} on the other hand, tackles the issue by utilizing machine learning techniques to prune the search space all-together, skipping irrelevant edges, 
-while still maintaining an optimal shortest path.
+while still maintaining an optimal shortest
