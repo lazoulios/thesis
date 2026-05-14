@@ -37,6 +37,14 @@ export default function GraphBuilder() {
   const [selectedAlgorithm, setSelectedAlgorithm] = useState('classic'); // state for choice of algorithm 
   const [isInfoPanelOpen, setInfoPanelOpen] = useState(false);
 
+  // playback state
+  const [animationData, setAnimationData] = useState(null);
+  const [animationTimeline, setAnimationTimeline] = useState([]);
+  const [currentStep, setCurrentStep] = useState(-1);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const playbackTimerRef = useRef(null);
+  const [predictionStats, setPredictionStats] = useState(null);
+
   useEffect(() => {
     if (selectedEdge) {
       const labelStr = selectedEdge.label || 'Cost: 1';
@@ -60,9 +68,13 @@ export default function GraphBuilder() {
   }, []);
 
   const addNode = () => {
+    const jitter = () => (Math.random() - 0.5) * 120;
+    const centerScreen = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    const centerFlow = rfInstance ? rfInstance.project(centerScreen) : { x: 250, y: 250 };
+
     const newNode = {
       id: `${nodeId}`,
-      position: { x: Math.random() * 300 + 100, y: Math.random() * 300 + 100 },
+      position: { x: centerFlow.x + jitter(), y: centerFlow.y + jitter() },
       data: { label: `Node ${nodeId}` },
       className: 'thesis-node', 
     };
@@ -261,8 +273,8 @@ export default function GraphBuilder() {
   const generateRandomGraph = () => {
     if (!confirm("This will clear the current graph. Continue?")) return;
 
-    const minNodes = 8;
-    const maxNodes = 25;
+    const minNodes = 10;
+    const maxNodes = 20;
     const nodeCount = Math.floor(Math.random() * (maxNodes - minNodes + 1)) + minNodes;
 
     const newNodes = [];
@@ -362,77 +374,99 @@ export default function GraphBuilder() {
     }
   };
 
-  /*
   // Generating trap graph which outlines the advantage of our algorithm
   const generateTrapGraph = () => {
-    if (!confirm("Generate Trap Graph? This demonstrates Dijkstra inefficiency.")) return;
+    if (!confirm("Generate Trap Graph? This demonstrates prediction pruning in PQ.")) return;
 
     const newNodes = [];
     const newEdges = [];
-    
-    // the main path
-    [1, 2, 3, 4].forEach((id, index) => {
-        newNodes.push({
-            id: `${id}`,
-            position: { x: 100 + (index * 200), y: 50 },
-            data: { label: id === 4 ? 'Target' : `Path ${id}` },
-            className: id === 4 ? 'thesis-node target-node' : (id === 1 ? 'thesis-node start-node' : 'thesis-node'),
-        });
-        
-        // connect to the previous
-        if (index > 0) {
-            newEdges.push({
-                id: `e${id-1}-${id}`,
-                source: `${id-1}`,
-                target: `${id}`,
-                animated: true,
-                label: 'Cost: 10',
-                style: { stroke: '#555', strokeWidth: 2 },
-            });
-        }
-    });
 
-    [5, 6, 7, 8].forEach((id, index) => {
-        newNodes.push({
-            id: `${id}`,
-            position: { x: 100 + (index * 200), y: 250 }, 
-            data: { label: `Trap ${id}` },
-            className: 'thesis-node',
-        });
-    });
+    // Long corridor ensures i0=10 is reached before the hub relaxes trap edges
+    const corridorLength = 11; // nodes 1..11
+    const corridorStartX = 120;
+    const corridorStartY = 80;
+    const corridorStepX = 160;
 
-    // trap edge from 1 to 5
-    newEdges.push({
-        id: `e1-5`, source: '1', target: '5', 
-        animated: true, label: 'Cost: 1', 
-        style: { stroke: '#ef4444', strokeWidth: 2 } 
-    });
+    for (let i = 1; i <= corridorLength; i++) {
+      newNodes.push({
+        id: `${i}`,
+        position: { x: corridorStartX + (i - 1) * corridorStepX, y: corridorStartY },
+        data: { label: i === 1 ? 'Start' : `Step ${i}` },
+        className: i === 1 ? 'thesis-node start-node' : 'thesis-node',
+      });
 
-    // trap edges from 5 to 8
-    const trapNodes = [5, 6, 7, 8];
-    for (let i = 0; i < trapNodes.length - 1; i++) {
+      if (i > 1) {
         newEdges.push({
-            id: `e${trapNodes[i]}-${trapNodes[i+1]}`,
-            source: `${trapNodes[i]}`,
-            target: `${trapNodes[i+1]}`,
-            animated: true,
-            label: 'Cost: 1',
-            style: { stroke: '#ef4444', strokeWidth: 2 }
+          id: `e${i - 1}-${i}`,
+          source: `${i - 1}`,
+          target: `${i}`,
+          animated: true,
+          label: 'Cost: 1',
+          style: { stroke: '#555', strokeWidth: 2 },
         });
+      }
+    }
+
+    // Short target branch after the hub
+    const targetId = corridorLength + 1; // node 12
+    newNodes.push({
+      id: `${targetId}`,
+      position: { x: corridorStartX + corridorLength * corridorStepX, y: corridorStartY + 140 },
+      data: { label: 'Target' },
+      className: 'thesis-node target-node',
+    });
+
+    newEdges.push({
+      id: `e${corridorLength}-${targetId}`,
+      source: `${corridorLength}`,
+      target: `${targetId}`,
+      animated: true,
+      label: 'Cost: 1',
+      style: { stroke: '#555', strokeWidth: 2 },
+    });
+
+    // Trap fan-out with large weights (classic Dijkstra inserts all into PQ)
+    const trapCount = 10;
+    const trapStartId = targetId + 1; // node 13
+    const trapCenterX = corridorStartX + (corridorLength - 1) * corridorStepX;
+    const trapCenterY = corridorStartY + 260;
+    const trapRadius = 420;
+
+    for (let i = 0; i < trapCount; i++) {
+      const angle = (2 * Math.PI * i) / trapCount;
+      const trapId = trapStartId + i;
+
+      newNodes.push({
+        id: `${trapId}`,
+        position: {
+          x: trapCenterX + Math.cos(angle) * trapRadius,
+          y: trapCenterY + Math.sin(angle) * (trapRadius * 0.4) + 220,
+        },
+        data: { label: `Trap ${trapId}` },
+        className: 'thesis-node',
+      });
+
+      newEdges.push({
+        id: `e${corridorLength}-${trapId}`,
+        source: `${corridorLength}`,
+        target: `${trapId}`,
+        animated: true,
+        label: 'Cost: 30',
+        style: { stroke: '#ef4444', strokeWidth: 2 },
+      });
     }
 
     setNodes(newNodes);
     setEdges(newEdges);
-    setNodeId(9);
-    setStartNodeState("1");
-    setTargetNodesState(new Set(["4"])); 
+    setNodeId(trapStartId + trapCount);
+    setStartNodeState('1');
+    setTargetNodesState(new Set([`${targetId}`]));
 
     // Auto Focus
     if (rfInstance) {
       setTimeout(() => rfInstance.fitView({ padding: 0.8, duration: 800 }), 100);
     }
   };
-  */
 
   // export for backend
   const printGraphData = () => {
@@ -450,7 +484,7 @@ export default function GraphBuilder() {
     alert(`Exported!\nStart: ${startNode}\nTargets: ${targetNodes.size}\nCheck Console.`);
   };
   
-const animateDijkstra = (visitedSteps, pathsDict, queueSteps = []) => {
+const resetHighlights = () => {
   setNodes((nds) => nds.map(n => ({
     ...n,
     className: n.className.replace(/ visited| path-node| queue-node/g, '')
@@ -459,71 +493,131 @@ const animateDijkstra = (visitedSteps, pathsDict, queueSteps = []) => {
     ...e,
     className: (e.className || '').replace(/ visited-edge| path-edge/g, '')
   })));
+};
 
-  let delay = 0;
-  const timePerStep = 1000;
+const isPredictionQueueSteps = (queueSteps) => {
+  if (!queueSteps) return false;
+  for (const q of queueSteps) {
+    if (!q) continue;
+    return !Array.isArray(q) && typeof q === 'object' && Object.prototype.hasOwnProperty.call(q, 'pq');
+  }
+  return false;
+};
 
-  // Animate steps
-  for (let i = 0; i < visitedSteps.length; i++) {
-    setTimeout(() => {
-      // Clear previous queue highlight
-      setNodes((nds) => nds.map((n) => ({
-        ...n,
-        className: n.className.replace(/ queue-node/g, '')
-      })));
+const resolveQueueSnapshot = (queueSteps, stepIndex, mode = 'last') => {
+  if (!queueSteps || !queueSteps[stepIndex]) return [];
+  const q = queueSteps[stepIndex];
+  if (Array.isArray(q)) {
+    if (q.length > 0 && Array.isArray(q[0])) {
+      return mode === 'first' ? q[0] : q[q.length - 1];
+    }
+    if (q.length > 0 && q[0] && typeof q[0].node !== 'undefined') return q;
+    return q;
+  }
+  if (q.pq) return q.pq;
+  if (q.pq_snapshots && q.pq_snapshots.length > 0) {
+    return mode === 'first' ? q.pq_snapshots[0] : q.pq_snapshots[q.pq_snapshots.length - 1];
+  }
+  return [];
+};
 
-      // Highlight current queue (yellow)
-      if (queueSteps && queueSteps[i]) {
-        const queueNodeIds = new Set(queueSteps[i].map(q => String(q.node)));
-        setNodes((nds) => nds.map((n) => {
-          if (queueNodeIds.has(n.id) && !n.className.includes('start-node') && !n.className.includes('target-node') && !n.className.includes('visited')) {
-            return { ...n, className: n.className + ' queue-node' };
-          }
-          return n;
-        }));
-      }
+const buildTimeline = (data) => {
+  if (!data || !data.visited_steps) return [];
+  const steps = [];
+  const maxVisited = data.visited_steps.length;
+  const isPrediction = isPredictionQueueSteps(data.queue_steps);
+  let lastQueueKey = null;
 
-      // Highlight visited node
-      const step = visitedSteps[i];
-      setNodes((nds) => nds.map((n) => {
-        if (n.id === String(step.node) && !n.className.includes('start-node') && !n.className.includes('target-node')) {
-          return { ...n, className: n.className.replace(' queue-node', '') + ' visited' };
-        }
-        return n;
-      }));
+  if (maxVisited === 0) return steps;
 
-      // Highlight visited edge
-      if (step.edge) {
-        setEdges((eds) => eds.map((e) => {
-          if (e.id === step.edge) {
-            return { ...e, className: (e.className || '') + ' visited-edge' };
-          }
-          return e;
-        }));
-      }
-    }, delay);
-    delay += timePerStep;
+  for (let i = 0; i < maxVisited - 1; i++) {
+    // queue state after relaxing current visited node
+    const queueIndex = isPrediction ? i + 1 : i;
+    const queueSnapshot = resolveQueueSnapshot(data.queue_steps, queueIndex, 'last');
+    const queueKey = JSON.stringify(queueSnapshot.map(q => String(q.node)).sort());
+    if (queueKey !== lastQueueKey) {
+      steps.push({ type: 'queue', stepIndex: i });
+      lastQueueKey = queueKey;
+    }
+
+    // visit the next node as a separate step
+    steps.push({ type: 'visit', stepIndex: i + 1 });
   }
 
-  // Final queue state (clear yellow)
-  setTimeout(() => {
-    setNodes((nds) => nds.map((n) => ({
-      ...n,
-      className: n.className.replace(/ queue-node/g, '')
-    })));
-  }, delay);
+  if (maxVisited === 1) {
+    const queueIndex = isPrediction ? 1 : 0;
+    const queueSnapshot = resolveQueueSnapshot(data.queue_steps, queueIndex, 'last');
+    const queueKey = JSON.stringify(queueSnapshot.map(q => String(q.node)).sort());
+    if (queueKey !== lastQueueKey) {
+      steps.push({ type: 'queue', stepIndex: 0 });
+      lastQueueKey = queueKey;
+    }
+  }
 
-  // Path coloring
-  setTimeout(() => {
+  steps.push({ type: 'path' });
+  return steps;
+};
+
+const applyStep = (timelineIndex, data, timeline) => {
+  if (!data) return;
+  const { visited_steps, paths, queue_steps } = data;
+  const isPrediction = isPredictionQueueSteps(queue_steps);
+  resetHighlights();
+
+  if (timelineIndex < 0) return;
+
+  const stepDef = timeline[timelineIndex];
+  if (!stepDef) return;
+
+  if (stepDef.type === 'path') {
+    // show full visited set, then shortest paths
+    const visitedSet = new Set(visited_steps.map(s => String(s.node)));
+    const visitedEdgeSet = new Set(visited_steps.map(s => s.edge).filter(Boolean));
+    const lastQueueIndex = visited_steps.length - 1;
+    const finalQueueSnapshot = lastQueueIndex >= 0
+      ? resolveQueueSnapshot(queue_steps, lastQueueIndex, 'last')
+      : [];
+    const finalQueueNodeIds = new Set(finalQueueSnapshot.map(q => String(q.node)));
+
+    if (isPrediction && queue_steps && queue_steps[lastQueueIndex]) {
+      const entry = queue_steps[lastQueueIndex];
+      if (entry && entry.P !== undefined && entry.B !== undefined) {
+        setPredictionStats({
+          P: entry.P,
+          B: entry.B,
+          RCount: Array.isArray(entry.R) ? entry.R.length : 0,
+        });
+      }
+    } else {
+      setPredictionStats(null);
+    }
+
+    setNodes((nds) => nds.map((n) => {
+      let cls = n.className;
+      if (finalQueueNodeIds.has(n.id) && !cls.includes('start-node') && !cls.includes('target-node')) {
+        cls += ' queue-node';
+      }
+      if (visitedSet.has(n.id) && !cls.includes('start-node') && !cls.includes('target-node')) {
+        cls = cls.replace(' queue-node', '') + ' visited';
+      }
+      return { ...n, className: cls };
+    }));
+
+    setEdges((eds) => eds.map((e) => {
+      if (visitedEdgeSet.has(e.id)) {
+        return { ...e, className: (e.className || '') + ' visited-edge' };
+      }
+      return e;
+    }));
+
     const pathNodesSet = new Set();
     const pathEdgesSet = new Set();
-
-    Object.values(pathsDict).forEach(pathArray => {
+    Object.values(paths).forEach(pathArray => {
       for (let i = 0; i < pathArray.length; i++) {
         pathNodesSet.add(String(pathArray[i]));
         if (i < pathArray.length - 1) {
           const source = String(pathArray[i]);
-          const target = String(pathArray[i+1]);
+          const target = String(pathArray[i + 1]);
           const edge = edges.find(e => e.source === source && e.target === target);
           if (edge) pathEdgesSet.add(edge.id);
         }
@@ -532,7 +626,8 @@ const animateDijkstra = (visitedSteps, pathsDict, queueSteps = []) => {
 
     setNodes((nds) => nds.map((n) => {
       if (pathNodesSet.has(n.id) && !n.className.includes('start-node') && !n.className.includes('target-node')) {
-        return { ...n, className: n.className.replace(' visited', '') + ' path-node' };
+        const withoutVisited = n.className.replace(' visited', '');
+        return { ...n, className: withoutVisited + ' path-node' };
       }
       return n;
     }));
@@ -544,7 +639,107 @@ const animateDijkstra = (visitedSteps, pathsDict, queueSteps = []) => {
       return e;
     }));
 
-  }, delay + 500);
+    return;
+  }
+
+  const stepIndex = stepDef.stepIndex;
+  if (typeof stepIndex !== 'number') return;
+
+  const visitedSet = new Set();
+  const visitedEdgeSet = new Set();
+  for (let i = 0; i <= stepIndex && i < visited_steps.length; i++) {
+    const step = visited_steps[i];
+    visitedSet.add(String(step.node));
+    if (step.edge) visitedEdgeSet.add(step.edge);
+  }
+
+  let queueSnapshot = [];
+  let predictionEntry = null;
+  if (stepDef.type === 'queue') {
+    const queueIndex = isPrediction ? stepIndex + 1 : stepIndex;
+    queueSnapshot = resolveQueueSnapshot(queue_steps, queueIndex, 'last');
+    predictionEntry = isPrediction && queue_steps ? queue_steps[queueIndex] : null;
+  } else if (stepDef.type === 'visit') {
+    const queueIndex = isPrediction ? stepIndex : stepIndex - 1;
+    if (queueIndex >= 0) {
+      queueSnapshot = resolveQueueSnapshot(queue_steps, queueIndex, 'last');
+      predictionEntry = isPrediction && queue_steps ? queue_steps[queueIndex] : null;
+    }
+  }
+
+  if (isPrediction && predictionEntry && predictionEntry.P !== undefined && predictionEntry.B !== undefined) {
+    setPredictionStats({
+      P: predictionEntry.P,
+      B: predictionEntry.B,
+      RCount: Array.isArray(predictionEntry.R) ? predictionEntry.R.length : 0,
+    });
+  } else if (!isPrediction) {
+    setPredictionStats(null);
+  }
+
+  const queueNodeIds = new Set(queueSnapshot.map(q => String(q.node)));
+  if (stepDef.type === 'visit') {
+    queueNodeIds.delete(String(visited_steps[stepIndex].node));
+  }
+
+  setNodes((nds) => nds.map((n) => {
+    let cls = n.className;
+    if (queueNodeIds.has(n.id) && !cls.includes('start-node') && !cls.includes('target-node') && !cls.includes('visited')) {
+      cls += ' queue-node';
+    }
+    if (visitedSet.has(n.id) && !cls.includes('start-node') && !cls.includes('target-node')) {
+      cls = cls.replace(' queue-node', '') + ' visited';
+    }
+    return { ...n, className: cls };
+  }));
+
+  setEdges((eds) => eds.map((e) => {
+    if (visitedEdgeSet.has(e.id)) {
+      return { ...e, className: (e.className || '') + ' visited-edge' };
+    }
+    return e;
+  }));
+
+};
+
+const stopPlayback = () => {
+  if (playbackTimerRef.current) {
+    clearInterval(playbackTimerRef.current);
+    playbackTimerRef.current = null;
+  }
+  setIsPlaying(false);
+};
+
+const startPlayback = () => {
+  if (!animationData) return;
+  if (isPlaying) return;
+  const maxStep = animationTimeline.length - 1;
+  setIsPlaying(true);
+  playbackTimerRef.current = setInterval(() => {
+    setCurrentStep((prev) => {
+      const next = Math.min(prev + 1, maxStep);
+      applyStep(next, animationData, animationTimeline);
+      if (next >= maxStep) {
+        stopPlayback();
+      }
+      return next;
+    });
+  }, 1000);
+};
+
+const stepNext = () => {
+  if (!animationData) return;
+  const maxStep = animationTimeline.length - 1;
+  const next = Math.min(currentStep + 1, maxStep);
+  setCurrentStep(next);
+  applyStep(next, animationData, animationTimeline);
+};
+
+const stepPrev = () => {
+  if (!animationData) return;
+  const prev = Math.max(currentStep - 1, -1);
+  setCurrentStep(prev);
+  applyStep(prev, animationData, animationTimeline);
 };
 
   const runAlgorithms = async () => {
@@ -579,11 +774,13 @@ const animateDijkstra = (visitedSteps, pathsDict, queueSteps = []) => {
           ? data.classic_dijkstra
           : data.dijkstra_prediction;
 
-      animateDijkstra(
-        resultToAnimate.visited_steps,
-        resultToAnimate.paths,
-        resultToAnimate.queue_steps // may be undefined for old runs
-      );
+      stopPlayback();
+      resetHighlights();
+      setAnimationData(resultToAnimate);
+      setAnimationTimeline(buildTimeline(resultToAnimate));
+      setCurrentStep(-1);
+      setPredictionStats(null);
+      // Start paused at the first step; user can press Play/Next
       
       // debugging logs
       console.log(`Classic explored: ${data.classic_dijkstra.visited_steps.length} nodes`);
@@ -688,7 +885,7 @@ const animateDijkstra = (visitedSteps, pathsDict, queueSteps = []) => {
                 <button className="btn" style={{backgroundColor: '#64748b', color: 'white', marginTop: '0'}} onClick={downloadGraph} title="Save to File">
                     Save
                 </button>
-                <button className="btn" style={{backgroundColor: '#475569', color: 'white', marginTop: '0'}} onClick={triggerLoad} title="Load from File">
+                <button className="btn" style={{backgroundColor: '#64748b', color: 'white', marginTop: '0'}} onClick={triggerLoad} title="Load from File">
                     Load
                 </button>
             </div>
@@ -699,9 +896,9 @@ const animateDijkstra = (visitedSteps, pathsDict, queueSteps = []) => {
                 <span></span> Random Graph
             </button>
 
-            {/*<button className="btn btn-random" style={{marginTop: '5px', backgroundColor: '#e11d48'}} onClick={generateTrapGraph}>
-                <span></span> Trap Scenario
-            </button>*/}
+            <button className="btn btn-random" style={{marginTop: '5px', backgroundColor: '#e11d48'}} onClick={generateTrapGraph}>
+              <span></span> Trap Scenario
+            </button>
 
             <hr style={{width: '100%', border: '0', borderTop: '1px solid #eee', margin: '5px 0'}}/>
 
@@ -767,6 +964,25 @@ const animateDijkstra = (visitedSteps, pathsDict, queueSteps = []) => {
             <span>Shortest path edge</span>
           </div>
         </div>
+        {predictionStats && (
+          <div
+            style={{
+              marginTop: '10px',
+              paddingTop: '10px',
+              borderTop: '1px solid #eee',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: '#1f2937',
+              display: 'flex',
+              gap: '10px',
+              alignItems: 'center',
+            }}
+            aria-label="Prediction stats"
+          >
+            <span>P: {predictionStats.P}</span>
+            <span>B: {predictionStats.B}</span>
+          </div>
+        )}
       </div>
 
       <button
@@ -827,16 +1043,16 @@ const animateDijkstra = (visitedSteps, pathsDict, queueSteps = []) => {
 
       {/* Bottom playback panel */}
       <div className="bottom-panel">
-        <button className="btn btn-bottom-panel" title="Previous Step">
+        <button className="btn btn-bottom-panel" title="Previous Step" onClick={stepPrev}>
           &#9664;
         </button>
-        <button className="btn btn-bottom-panel" title="Play">
+        <button className="btn btn-bottom-panel" title="Play" onClick={startPlayback}>
           &#9654;
         </button>
-        <button className="btn btn-bottom-panel" title="Pause">
+        <button className="btn btn-bottom-panel" title="Pause" onClick={stopPlayback}>
           &#10073;&#10073;
         </button>
-        <button className="btn btn-bottom-panel" title="Next Step">
+        <button className="btn btn-bottom-panel" title="Next Step" onClick={stepNext}>
           &#9654;&#9654;
         </button>
       </div>

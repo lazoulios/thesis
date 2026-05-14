@@ -33,6 +33,7 @@ class GraphPayload(BaseModel):
 #API Endpoint
 @app.post("/solve")
 def solve_shortest_path(payload: GraphPayload):
+    
     print(f"Received Graph! Start: {payload.startNode} | Targets: {payload.targetNodes}")
     
     #dijkstra
@@ -44,7 +45,7 @@ def solve_shortest_path(payload: GraphPayload):
         payload.targetNodes
     )
 
-    pred_visited, pred_paths, pred_distances, pred_queue_steps = run_prediction_dijkstra(
+    pred_visited, pred_paths, pred_distances, pred_remaining_queue, pred_queue_steps = run_prediction_dijkstra(
         payload.nodes,
         payload.edges,
         payload.startNode,
@@ -66,7 +67,7 @@ def solve_shortest_path(payload: GraphPayload):
         "dijkstra_prediction": {
             "visited_steps": pred_visited,
             "paths": pred_paths,
-            "remaining_queue": remaining_queue,
+            "remaining_queue": pred_remaining_queue,
             "queue_steps": pred_queue_steps,
         }
     }

@@ -1,15 +1,16 @@
 import random
-import math
 import heapq
 import csv
+import numpy as np
 from pydantic import BaseModel
 from typing import List
 
+# 1. ΠΡΟΣΟΧΗ: Το weight έγινε float!
 class EdgeModel(BaseModel):
     id: str
     source: str 
     target: str
-    weight: int
+    weight: float 
 
 class GraphPayload(BaseModel):
     startNode: str
@@ -17,56 +18,48 @@ class GraphPayload(BaseModel):
     nodes: List[dict] 
     edges: List[EdgeModel]
 
-def generate_random_graph() -> GraphPayload:
-    node_count = 100
+def generate_erdos_renyi_graph() -> GraphPayload:
+    n = 1000
+    c = 8
+    f = 20
+    p = c / n
+    q = f / n
     
-    columns = math.ceil(math.sqrt(node_count))
-    nodes = [{'id': str(i)} for i in range(1, node_count + 1)]
+    nodes = [{'id': str(i)} for i in range(n)]
+    
+    start_node = str(random.randint(0, n - 1))
+    
+    target_nodes = [str(i) for i in range(n) if random.random() < q and str(i) != start_node]
+    
+    if not target_nodes:
+        fallback = start_node
+        while fallback == start_node:
+            fallback = str(random.randint(0, n - 1))
+        target_nodes.append(fallback)
+
     edges = []
-
-
-    for i in range(1, node_count + 1):
-        num_edges = 1 if random.random() > 0.4 else 2
-        
-        for j in range(num_edges):
-            possible_target = i + random.randint(0, columns - 1) + 1
-            
-            if possible_target > node_count:
-                possible_target = random.randint(1, node_count - 1)
-                
-            if possible_target != i:
-                exists = any(
-                    (e.source == str(i) and e.target == str(possible_target)) or
-                    (e.source == str(possible_target) and e.target == str(i))
-                    for e in edges
-                )
-                
-                if not exists:
-                    weight = random.randint(1, 10)
-                    edges.append(EdgeModel(
-                        id=f"e{i}-{possible_target}-{j}",
-                        source=str(i),
-                        target=str(possible_target),
-                        weight=weight
-                    ))
-
-    start_node = "1"
-    random_targets = set()
-    num_targets = random.randint(1, 3)
+    edge_id_counter = 0
     
-    while len(random_targets) < num_targets:
-        min_target_id = int(node_count * 0.7)
-        if node_count - min_target_id <= 0:
-            r = random.randint(2, node_count)
-        else:
-            r = random.randint(min_target_id + 1, node_count)
+    for i in range(n):
+        out_degree = np.random.binomial(n - 1, p)
+        
+        if out_degree > 0:
+            possible_targets = [x for x in range(n) if x != i]
+            targets = random.sample(possible_targets, out_degree)
             
-        if str(r) != start_node:
-            random_targets.add(str(r))
+            for t in targets:
+                weight = random.uniform(0.0, 1.0)
+                edges.append(EdgeModel(
+                    id=f"e{edge_id_counter}",
+                    source=str(i),
+                    target=str(t),
+                    weight=weight
+                ))
+                edge_id_counter += 1
 
     return GraphPayload(
         startNode=start_node,
-        targetNodes=list(random_targets),
+        targetNodes=target_nodes,
         nodes=nodes,
         edges=edges
     )
@@ -98,7 +91,7 @@ def extract_trace_and_distance(payload: GraphPayload, i0=10):
         iterations += 1
 
         if iterations <= i0:
-            formatted_B = 0 if B == float('inf') else B
+            formatted_B = 0.0 if B == float('inf') else B
             trace.extend([current_distance, formatted_B])
 
         if current_node in targets_set:
@@ -118,17 +111,13 @@ def extract_trace_and_distance(payload: GraphPayload, i0=10):
                 distances[neighbor] = new_distance
                 heapq.heappush(pq, (new_distance, neighbor))
 
-    if final_distance is None:
+    if final_distance is None or iterations <= i0:
         return None
-
-    while len(trace) < i0 * 2:
-        formatted_B = 0 if B == float('inf') else B
-        trace.extend([current_distance, formatted_B])
 
     return {"trace": trace, "y": final_distance}
 
 def generate_dataset(num_graphs, i0, filename="training_data.csv"):
-    print(f"Generating {num_graphs} graphs... This might take a minute.")
+    print(f"Generating {num_graphs} Erdos-Renyi graphs... This might take a while.")
     
     with open(filename, mode='w', newline='') as file:
         writer = csv.writer(file)
@@ -141,7 +130,7 @@ def generate_dataset(num_graphs, i0, filename="training_data.csv"):
 
         valid_graphs = 0
         while valid_graphs < num_graphs:
-            payload = generate_random_graph()
+            payload = generate_erdos_renyi_graph()
             result = extract_trace_and_distance(payload, i0)
 
             if result is not None:
@@ -155,4 +144,4 @@ def generate_dataset(num_graphs, i0, filename="training_data.csv"):
     print(f"Done! Dataset saved to {filename}")
 
 if __name__ == "__main__":
-    generate_dataset(num_graphs=20000, i0=10)
+    generate_dataset(num_graphs=80000, i0=10)
