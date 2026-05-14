@@ -1,6 +1,6 @@
 import heapq
 
-def run_classic_dijkstra(nodes_data, edges_data, start_node, target_nodes):
+def run_classic_dijkstra(nodes_data, edges_data, start_node, target_nodes, collect_stats=False):
     #build the graph adjacency list
     graph = {node['id']: [] for node in nodes_data}
     for edge in edges_data:
@@ -20,14 +20,20 @@ def run_classic_dijkstra(nodes_data, edges_data, start_node, target_nodes):
     targets_set = set(target_nodes)
     found_target = None
 
+    pq_pushes = 1  # initial push
+    pq_pops = 0
+    pq_skips = 0
+
     while pq:
         # Take a snapshot before popping, but only append snapshots for actual (non-duplicate) pops
         snapshot_before = [{"distance": d, "node": n} for d, n in sorted(pq)]
 
         current_distance, current_node = heapq.heappop(pq)
+        pq_pops += 1
 
         if current_node in settled:
             # skip duplicates introduced in the heap
+            pq_skips += 1
             continue
 
         settled.add(current_node)
@@ -57,6 +63,7 @@ def run_classic_dijkstra(nodes_data, edges_data, start_node, target_nodes):
                 previous_nodes[neighbor] = current_node
                 previous_edges[neighbor] = edge_id
                 heapq.heappush(pq, (new_distance, neighbor))
+                pq_pushes += 1
 
                 current_step_snapshots.append([
                     {"distance": d, "node": n} for d, n in sorted(pq)
@@ -86,5 +93,13 @@ def run_classic_dijkstra(nodes_data, edges_data, start_node, target_nodes):
             curr = previous_nodes[curr]
         path.reverse()
         paths[target] = path
+
+    if collect_stats:
+        stats = {
+            "pq_pushes": pq_pushes,
+            "pq_pops": pq_pops,
+            "pq_skips": pq_skips,
+        }
+        return visited_steps, paths, distances, remaining_queue, queue_steps, stats
 
     return visited_steps, paths, distances, remaining_queue, queue_steps

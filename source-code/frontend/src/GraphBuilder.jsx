@@ -727,6 +727,23 @@ const startPlayback = () => {
   }, 1000);
 };
 
+const startPlaybackWith = (data, timeline) => {
+  if (!data || !timeline || timeline.length === 0) return;
+  if (isPlaying) return;
+  const maxStep = timeline.length - 1;
+  setIsPlaying(true);
+  playbackTimerRef.current = setInterval(() => {
+    setCurrentStep((prev) => {
+      const next = Math.min(prev + 1, maxStep);
+      applyStep(next, data, timeline);
+      if (next >= maxStep) {
+        stopPlayback();
+      }
+      return next;
+    });
+  }, 1000);
+};
+
 const stepNext = () => {
   if (!animationData) return;
   const maxStep = animationTimeline.length - 1;
@@ -776,11 +793,12 @@ const stepPrev = () => {
 
       stopPlayback();
       resetHighlights();
-      setAnimationData(resultToAnimate);
-      setAnimationTimeline(buildTimeline(resultToAnimate));
+        const timeline = buildTimeline(resultToAnimate);
+        setAnimationData(resultToAnimate);
+        setAnimationTimeline(timeline);
       setCurrentStep(-1);
       setPredictionStats(null);
-      // Start paused at the first step; user can press Play/Next
+        startPlaybackWith(resultToAnimate, timeline);
       
       // debugging logs
       console.log(`Classic explored: ${data.classic_dijkstra.visited_steps.length} nodes`);
@@ -1044,16 +1062,16 @@ const stepPrev = () => {
       {/* Bottom playback panel */}
       <div className="bottom-panel">
         <button className="btn btn-bottom-panel" title="Previous Step" onClick={stepPrev}>
-          &#9664;
-        </button>
-        <button className="btn btn-bottom-panel" title="Play" onClick={startPlayback}>
-          &#9654;
-        </button>
-        <button className="btn btn-bottom-panel" title="Pause" onClick={stopPlayback}>
-          &#10073;&#10073;
+          &#9664; Previous Step
         </button>
         <button className="btn btn-bottom-panel" title="Next Step" onClick={stepNext}>
-          &#9654;&#9654;
+          &#9654; Next Step
+        </button>
+        <button className="btn btn-bottom-panel" title="Play" onClick={startPlayback}>
+          &#9654;&#9654; Play
+        </button>
+        <button className="btn btn-bottom-panel" title="Pause" onClick={stopPlayback}>
+          &#10073;&#10073; Pause
         </button>
       </div>
 

@@ -1,4 +1,5 @@
 import pandas as pd
+from pathlib import Path
 from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
@@ -9,6 +10,8 @@ import mlflow
 import mlflow.sklearn
 
 def train_and_track_model():
+    repo_root = Path(__file__).resolve().parents[2]
+    mlflow.set_tracking_uri(f"file:{repo_root / 'mlruns'}")
     df = pd.read_csv("data\\training_data.csv")
     
     X = df.drop(columns=['True_Distance_y'])

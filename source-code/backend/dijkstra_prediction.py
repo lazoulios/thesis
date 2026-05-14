@@ -37,7 +37,7 @@ def mlp_predict(trace):
     trace_array = np.array([trace]) 
     return mlp_model.predict(trace_array)[0]
 
-def run_prediction_dijkstra(nodes_data, edges_data, start_node, target_nodes, i0=10, alpha=1.1, beta=1.2):
+def run_prediction_dijkstra(nodes_data, edges_data, start_node, target_nodes, i0=10, alpha=1.1, beta=1.2, collect_stats=False):
     graph = {node['id']: [] for node in nodes_data}
     for edge in edges_data:
         graph[edge.source].append((edge.target, edge.weight, edge.id))
@@ -62,6 +62,12 @@ def run_prediction_dijkstra(nodes_data, edges_data, start_node, target_nodes, i0
     targets_set = set(target_nodes)
     found_target = None
 
+    pq_pushes = 1  # initial push
+    pq_pops = 0
+    pq_skips = 0
+    r_inserts = 0
+    r_rescues = 0
+
     while pq or R:
         
         # If PQ is empty OR the minimum distance in PQ exceeds P, we need to inflate P
@@ -73,6 +79,8 @@ def run_prediction_dijkstra(nodes_data, edges_data, start_node, target_nodes, i0
             for r_node, r_dist in R.items():
                 if r_dist <= P and r_dist <= B:
                     heapq.heappush(pq, (r_dist, r_node))
+                    pq_pushes += 1
+                    r_rescues += 1
                     nodes_to_rescue.append(r_node)
             
             for r_node in nodes_to_rescue:
@@ -92,8 +100,10 @@ def run_prediction_dijkstra(nodes_data, edges_data, start_node, target_nodes, i0
         })
 
         current_distance, current_node = heapq.heappop(pq)
+        pq_pops += 1
 
         if current_node in settled:
+            pq_skips += 1
             continue
 
         settled.add(current_node)
@@ -140,10 +150,12 @@ def run_prediction_dijkstra(nodes_data, edges_data, start_node, target_nodes, i0
                 
                 if new_distance <= P:
                     heapq.heappush(pq, (new_distance, neighbor))
+                    pq_pushes += 1
                     if neighbor in R:
                         del R[neighbor]
                 else:
                     R[neighbor] = new_distance
+                    r_inserts += 1
 
     current_pq = [{"distance": d, "node": n} for d, n in sorted(pq)]
     current_R = [{"distance": d, "node": n} for n, d in R.items()]
@@ -169,5 +181,15 @@ def run_prediction_dijkstra(nodes_data, edges_data, start_node, target_nodes, i0
             curr = previous_nodes[curr]
         path.reverse()
         paths[target] = path
+
+    if collect_stats:
+        stats = {
+            "pq_pushes": pq_pushes,
+            "pq_pops": pq_pops,
+            "pq_skips": pq_skips,
+            "r_inserts": r_inserts,
+            "r_rescues": r_rescues,
+        }
+        return visited_steps, paths, distances, remaining_queue, queue_steps, stats
 
     return visited_steps, paths, distances, remaining_queue, queue_steps

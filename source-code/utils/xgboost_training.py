@@ -1,8 +1,8 @@
 import pandas as pd
 import time # Για να μετράμε τον χρόνο εκπαίδευσης
+from pathlib import Path
 from sklearn.model_selection import train_test_split
-from sklearn.neural_network import MLPRegressor
-from xgboost import XGBRegressor # <-- Το νέο μας αστέρι
+from xgboost import XGBRegressor 
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
 from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error 
@@ -11,6 +11,8 @@ import mlflow
 import mlflow.sklearn
 
 def train_and_compare_models():
+    repo_root = Path(__file__).resolve().parents[2]
+    mlflow.set_tracking_uri(f"file:{repo_root / 'mlruns'}")
     df = pd.read_csv("data\\training_data.csv")
     
     X = df.drop(columns=['True_Distance_y'])
@@ -28,7 +30,6 @@ def train_and_compare_models():
     print(f"Starting MLflow experiment. Testing {len(models_to_test)} different models...")
 
     for model_name, model_instance in models_to_test.items():
-        
         with mlflow.start_run(run_name=model_name):
             print(f"--- Training {model_name} ---")
             
