@@ -62,7 +62,7 @@ def train_and_compare_models():
             
             mlflow.sklearn.log_model(model_pipeline, "model")
             
-            local_filename = f'dijkstra_{model_name.lower()}.joblib'
+            local_filename = f'models/dijkstra_{model_name.lower()}.joblib'
             joblib.dump(model_pipeline, local_filename)
 
     print("Finished")

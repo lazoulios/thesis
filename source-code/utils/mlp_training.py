@@ -55,7 +55,7 @@ def train_and_track_model():
             
             mlflow.sklearn.log_model(model_pipeline, "mlp_model")
             
-            local_filename = f'dijkstra_mlp_{size}x{size}.joblib'
+            local_filename = f'models/dijkstra_mlp_{size}x{size}.joblib'
             joblib.dump(model_pipeline, local_filename)
 
     print("Finished")

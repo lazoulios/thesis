@@ -1,54 +1,53 @@
 import heapq
+import json
 import numpy as np
 from pathlib import Path
 
 from joblib import load
 
-# loading the model
-MODEL_FILENAME = 'dijkstra_mlp_16x16.joblib'
-_MODEL_CACHE = {}
+MODEL_FILENAME = "dijkstra_mlp_window_10_16x16.joblib"
 
-# had some errors with loading so some failsafes
-def _find_model_file(model_filename):
+
+def _find_model_file():
     here = Path(__file__).resolve().parent
     candidates = [
-        here / 'models' / model_filename,
-        here.parent / 'models' / model_filename,
-        here.parent.parent / 'models' / model_filename,
-        Path.cwd() / 'models' / model_filename,
+        here / 'models' / MODEL_FILENAME,
+        here.parent / 'models' / MODEL_FILENAME,
+        here.parent.parent / 'models' / MODEL_FILENAME,
+        Path.cwd() / 'models' / MODEL_FILENAME,
     ]
     for p in candidates:
         if p.exists():
             return p
     return None
 
-def _load_model(model_filename=None):
-    filename = model_filename or MODEL_FILENAME
-    if filename in _MODEL_CACHE:
-        return _MODEL_CACHE[filename]
 
-    model_path = _find_model_file(filename)
-    if model_path is None:
-        tried = [str(p) for p in [
-            Path(__file__).resolve().parent / 'models' / filename,
-            Path(__file__).resolve().parent.parent / 'models' / filename,
-            Path(__file__).resolve().parent.parent.parent / 'models' / filename,
-            Path.cwd() / 'models' / filename,
-        ]]
-        raise FileNotFoundError(f"Model file '{filename}' not found. Tried locations: {', '.join(tried)}")
+model_path = _find_model_file()
+if model_path is None:
+    tried = [str(p) for p in [
+        Path(__file__).resolve().parent / 'models' / MODEL_FILENAME,
+        Path(__file__).resolve().parent.parent / 'models' / MODEL_FILENAME,
+        Path(__file__).resolve().parent.parent.parent / 'models' / MODEL_FILENAME,
+        Path.cwd() / 'models' / MODEL_FILENAME,
+    ]]
+    raise FileNotFoundError(
+        f"Model file '{MODEL_FILENAME}' not found. Tried locations: {', '.join(tried)}"
+    )
 
-    model = load(model_path)
-    _MODEL_CACHE[filename] = model
-    return model
+mlp_model = load(model_path)
+meta_path = model_path.with_suffix(".meta.json")
+meta = None
+if meta_path.exists():
+    with open(meta_path, "r", encoding="utf-8") as handle:
+        meta = json.load(handle)
 
-mlp_model = _load_model()
 
-def mlp_predict(trace, model=None):
-    trace_array = np.array([trace])
-    predictor = model or mlp_model
-    return predictor.predict(trace_array)[0]
+def mlp_predict(trace_window):
+    trace_array = np.array([trace_window])
+    return mlp_model.predict(trace_array)[0]
 
-def run_prediction_dijkstra(
+
+def run_prediction_dijkstra_windowed(
     nodes_data,
     edges_data,
     start_node,
@@ -57,12 +56,12 @@ def run_prediction_dijkstra(
     alpha=1.1,
     beta=1.2,
     collect_stats=False,
-    model_filename=None,
+    window_size=10,
 ):
     graph = {node['id']: [] for node in nodes_data}
     for edge in edges_data:
         graph[edge.source].append((edge.target, edge.weight, edge.id))
-        
+
     distances = {node['id']: float('inf') for node in nodes_data}
     distances[start_node] = 0
 
@@ -70,32 +69,32 @@ def run_prediction_dijkstra(
     previous_edges = {node['id']: None for node in nodes_data}
 
     pq = [(0, start_node)]
-    
-    B = float('inf')  # Pruning bound (shortest path to target found so far
-    P = float('inf')  # Prediction value
-    R = {}            # Reserve set
-    trace = []
+
+    B = float('inf')
+    P = float('inf')
+    R = {}
+    trace_pairs = []
     iteration = 0
 
     visited_steps = []
-    queue_steps = []  # to record PQ, R, P, and B
+    queue_steps = []
     settled = set()
     targets_set = set(target_nodes)
     found_target = None
 
-    pq_pushes = 1  # initial push
+    pq_pushes = 1
     pq_pops = 0
     pq_skips = 0
     r_inserts = 0
     r_rescues = 0
 
+    residual_q = float(meta.get("residual_quantile", 0.0)) if meta else 0.0
+    target_type = meta.get("target") if meta else None
+
     while pq or R:
-        
-        # If PQ is empty OR the minimum distance in PQ exceeds P, we need to inflate P
-        # and rescue valid nodes from the Reserve Set R.
         while (not pq or pq[0][0] > P) and R:
             P = P * beta if P != float('inf') else float('inf')
-            
+
             nodes_to_rescue = []
             for r_node, r_dist in R.items():
                 if r_dist <= P and r_dist <= B:
@@ -103,21 +102,20 @@ def run_prediction_dijkstra(
                     pq_pushes += 1
                     r_rescues += 1
                     nodes_to_rescue.append(r_node)
-            
+
             for r_node in nodes_to_rescue:
                 del R[r_node]
-                
+
         if not pq:
             break
 
-        # Record a snapshot of the queue, the reserve set, and the bounds before popping
         current_pq = [{"distance": d, "node": n} for d, n in sorted(pq)]
         current_R = [{"distance": d, "node": n} for n, d in R.items()]
         queue_steps.append({
-            "pq": current_pq, 
-            "R": current_R, 
-            "P": P if P != float('inf') else "Infinity", 
-            "B": B if B != float('inf') else "Infinity"
+            "pq": current_pq,
+            "R": current_R,
+            "P": P if P != float('inf') else "Infinity",
+            "B": B if B != float('inf') else "Infinity",
         })
 
         current_distance, current_node = heapq.heappop(pq)
@@ -135,24 +133,24 @@ def run_prediction_dijkstra(
             "edge": previous_edges[current_node]
         })
 
-        if iteration <= i0:
-            formatted_B = 0 if B == float('inf') else B
-            trace.extend([current_distance, formatted_B])
+        formatted_B = 0 if B == float('inf') else B
+        trace_pairs.append((current_distance, formatted_B))
 
         if current_node in targets_set:
             found_target = current_node
             break
 
-        if iteration == i0:
-            while len(trace) < i0 * 2:
-                formatted_B = 0 if B == float('inf') else B
-                trace.extend([current_distance, formatted_B])
-                
-            model = _load_model(model_filename) if model_filename else mlp_model
-            raw_prediction = mlp_predict(trace, model=model)
-            P = raw_prediction * alpha  #inflate prediction to be more conservative
+        effective_window = window_size or i0
+        if len(trace_pairs) >= effective_window:
+            window = trace_pairs[-effective_window:]
+            trace_window = [val for pair in window for val in pair]
+            raw_prediction = mlp_predict(trace_window)
+            if target_type == "remaining_distance":
+                pred_total = current_distance + raw_prediction + residual_q
+                P = pred_total * alpha
+            else:
+                P = raw_prediction * alpha
 
-        # relax routine
         for neighbor, weight, edge_id in graph[current_node]:
             if neighbor in settled:
                 continue
@@ -169,7 +167,7 @@ def run_prediction_dijkstra(
                 distances[neighbor] = new_distance
                 previous_nodes[neighbor] = current_node
                 previous_edges[neighbor] = edge_id
-                
+
                 if new_distance <= P:
                     heapq.heappush(pq, (new_distance, neighbor))
                     pq_pushes += 1
@@ -182,10 +180,10 @@ def run_prediction_dijkstra(
     current_pq = [{"distance": d, "node": n} for d, n in sorted(pq)]
     current_R = [{"distance": d, "node": n} for n, d in R.items()]
     queue_steps.append({
-        "pq": current_pq, 
-        "R": current_R, 
-        "P": P if P != float('inf') else "Infinity", 
-        "B": B if B != float('inf') else "Infinity"
+        "pq": current_pq,
+        "R": current_R,
+        "P": P if P != float('inf') else "Infinity",
+        "B": B if B != float('inf') else "Infinity",
     })
 
     remaining_queue = [{"distance": d, "node": n} for d, n in sorted(pq)]
