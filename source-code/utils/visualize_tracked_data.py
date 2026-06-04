@@ -25,7 +25,7 @@ def _plot_comparison(
     x = np.arange(len(labels))
     width = 0.6
 
-    fig, ax = plt.subplots(figsize=(14, 6))
+    fig, ax = plt.subplots(figsize=(14, 8))
     ax.grid(axis="y", alpha=0.3)   
     ax.set_axisbelow(True)
 
@@ -83,7 +83,7 @@ def _plot_ops_line(
     output_path,
     cumulative=False,
 ):
-    fig, ax = plt.subplots(figsize=(14, 6))
+    fig, ax = plt.subplots(figsize=(14, 8))
     ax.grid(axis="y", alpha=0.3)
     ax.set_axisbelow(True)
 
@@ -108,7 +108,7 @@ def _plot_ops_line(
 
 
 def plot_benchmark_results(csv_path, output_dir):
-    sns.set_theme(style="whitegrid", context="talk")
+    sns.set_theme(style="darkgrid", context="talk")
 
     df = pd.read_csv(csv_path)
     output_dir = Path(output_dir)
