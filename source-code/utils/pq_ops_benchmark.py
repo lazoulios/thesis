@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 from types import SimpleNamespace
 import warnings
+import time
 
 import numpy as np
 import mlflow
@@ -82,6 +83,7 @@ def run_benchmark(
         payload = generate_erdos_renyi_graph(n, c, f)
         edge_objs = [SimpleNamespace(**edge) for edge in payload["edges"]]
 
+        classic_start = time.perf_counter()
         classic = run_classic_dijkstra(
             payload["nodes"],
             edge_objs,
@@ -89,8 +91,10 @@ def run_benchmark(
             payload["targetNodes"],
             collect_stats=True,
         )
+        classic_elapsed = time.perf_counter() - classic_start
         pred_stats_by_model = {}
         for tag, model_filename in model_specs:
+            pred_start = time.perf_counter()
             pred = run_prediction_dijkstra(
                 payload["nodes"],
                 edge_objs,
@@ -102,11 +106,14 @@ def run_benchmark(
                 collect_stats=True,
                 model_filename=model_filename,
             )
+            pred_elapsed = time.perf_counter() - pred_start
             _, _, _, _, _, pred_stats = pred
-            pred_stats_by_model[tag] = pred_stats
+            pred_stats_by_model[tag] = (pred_stats, pred_elapsed)
 
         windowed = None
+        windowed_elapsed = None
         if include_windowed:
+            windowed_start = time.perf_counter()
             windowed = run_windowed(
                 payload["nodes"],
                 edge_objs,
@@ -117,6 +124,7 @@ def run_benchmark(
                 beta=beta,
                 collect_stats=True,
             )
+            windowed_elapsed = time.perf_counter() - windowed_start
 
         _, _, _, _, _, classic_stats = classic
         if include_windowed:
@@ -130,9 +138,11 @@ def run_benchmark(
             "classic_pq_pops": classic_stats["pq_pops"],
             "classic_pq_skips": classic_stats["pq_skips"],
             "classic_ops": classic_ops,
+            "classic_time_s": classic_elapsed,
         }
 
-        for tag, stats in pred_stats_by_model.items():
+        for tag, payload_stats in pred_stats_by_model.items():
+            stats, pred_elapsed = payload_stats
             pred_ops = stats["pq_pushes"] + stats["pq_pops"]
             skipped_ops = classic_ops - pred_ops
             row.update({
@@ -143,6 +153,7 @@ def run_benchmark(
                 f"{tag}_r_rescues": stats["r_rescues"],
                 f"{tag}_ops": pred_ops,
                 f"{tag}_skipped_ops": skipped_ops,
+                f"{tag}_time_s": pred_elapsed,
             })
 
         if include_windowed:
@@ -156,6 +167,7 @@ def run_benchmark(
                 "windowed_r_rescues": windowed_stats["r_rescues"],
                 "windowed_ops": windowed_ops,
                 "windowed_skipped_ops": windowed_skipped,
+                "windowed_time_s": windowed_elapsed,
             })
 
         results.append(row)
@@ -196,7 +208,7 @@ def main():
     )
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--num-graphs", type=int, default=100)
+    parser.add_argument("--num-graphs", type=int, default=10000)
     parser.add_argument("--n", type=int, default=1000)
     parser.add_argument("--c", type=float, default=8)
     parser.add_argument("--f", type=float, default=20)
@@ -268,13 +280,14 @@ def main():
         mlflow.log_param("mlp_models", ",".join(model_sizes))
         mlflow.log_param("xgboost_models", ",".join(xgboost_variants))
 
-        metric_keys = ["classic_ops"]
+        metric_keys = ["classic_ops", "classic_time_s"]
         for tag, _ in model_specs:
             metric_keys.extend([
                 f"{tag}_ops",
                 f"{tag}_skipped_ops",
                 f"{tag}_r_inserts",
                 f"{tag}_r_rescues",
+                f"{tag}_time_s",
             ])
         if args.windowed:
             metric_keys.extend([
@@ -282,6 +295,7 @@ def main():
                 "windowed_skipped_ops",
                 "windowed_r_inserts",
                 "windowed_r_rescues",
+                "windowed_time_s",
             ])
 
         for metric_key in metric_keys:
