@@ -4,7 +4,7 @@
 In this chapter we will provide the necessary background and graph theory concepts needed for the rest of the thesis.
 We will also provide a brief overview of classical algorithms for the solution of the Shortest Path Problem
 (e.g. Dijkstra's\cite{dijkstraNoteTwoProblems1959}, A*\cite{hartFormalBasisHeuristic1968b}, ALT\cite{goldbergComputingShortestPath2005}, Contraction Hierarchies\cite{geisbergerContractionHierarchiesFaster2008}),
-as well as newer algorithms developed in the area of \textit{Algorithms with Predictions} (or \textit{Learning Augmented Algorithms}).
+before going into newer algorithms developed in the area of \textit{Algorithms with Predictions} (or \textit{Learning Augmented Algorithms}).
 
 \section{Graph Theory Basics}
 We will start by defining some basic graph theory concepts that will be used throughout the thesis.
@@ -60,16 +60,16 @@ A solution for this problem was designed by Jin Y. Yen\cite{yenFindingShortestLo
 \subsection{Single-Source Many-Targets Shortest Path}
 In this thesis, we focus specifically on the \textit{Single-Source Many-Targets Shortest Path} (SSMTSP) problem, which is the version of the Shortest Path Problem addressed by the algorithm of Feijen and Schäfer~\cite{feijenDijkstrasAlgorithmPredictions2023}.
 
-SSMTSP is a variation of the Single-Source Shortest Path (SSSP) problem, where instead of finding the shortest path from a source node to all other nodes in the graph, we search to find the shortest paths from a single source node to a specific set of target nodes.
+SSMTSP is a variation of the Single-Source Shortest Path (SSSP) problem, where instead of finding the shortest path from a source node to all other nodes in the graph, we search to find the shortest paths from a single source node to a target node $t \in T$, where $T$ is a set of specific target nodes.
 More specifically:
 
 Given a directed, weighted graph $G=(V, E)$, with a weight function 
 \footnote{As mentioned before the assumption of $\mathbb{R}_{\geq 0}$ is necessary for Dijkstra's algorithm}
 $w: E \rightarrow \mathbb{R}_{\geq 0}$
-, a source node $s$, and a set of target nodes $T \subseteq V$, the goal is to find the shortest paths $\delta(s,t)$ from $s$ to all $t \in T$.
+, a source node $s$, and a set of target nodes $T \subseteq V$, the goal is to find the shortest paths $\delta(s,t)$ from $s$ to $\exists$ $t \in T$.
 
 This specific version of the problem is used in real-world scenarios such as in Points of Interest (POI) search in navigation systems, where a user in a specific location (source node) may want to find multiples options (target nodes) for a specific destination (e.g. gas stations, restaurants, etc.) and not just the closest one.
-It is also used as a subroutine in logistics and specifically in the Last-Mile Delivery problem, where a distribution center (source node) needs to deliver goods to multiple customers
+It is also used as a subroutine in logistics and specifically in the Last-Mile Delivery problem, where a distribution center (source node) needs to deliver goods to customers
 \footnote{Usually the delivery routine is calculated with a variation of the \textit{Traveling Salesperson Problem} (TSP), but often the first step is to calculate the shortests paths by solving the SSMTSP problem}
 (target nodes) in the most efficient way possible.
 Furthermore, it is used in Content Delivery Networks (CDNs) where a server (source node) needs to deliver content to multiple users (target nodes) in the most efficient way possible. 
@@ -120,23 +120,96 @@ PQ.INSERT$(s, d(s))$\;
 }
 \end{algorithm}
 
-\textsc{DIJKSTRA} is a greedy algorithm\footnote{"Greedy" algorithms work by making the best choice in any specific step/iteration (local optimal)} 
+\textsc{DIJKSTRA} is a greedy algorithm\footnote{\textit{Greedy} algorithms work by making the best choice in any specific step/iteration.} 
 since it selects the "lightest" vertex thus selecting a local optimal choice, but unlike most greedy algorithms it guarantees the global optimal result everytime.
 
 As mentioned in the introduction, through the use of \textit{Fibonacci Heaps} as proposed by Fredman and Tarjan\cite{fredmanFibonacciHeapsTheir1987}, 
 \textsc{DIJKSTRA} can achieve a time complexity of O($m$ + $n\log n$) (where $n$ and $m$ are the number of nodes and edges respectively).
 
 \subsection{Limitations}
+\label{subsec:limits}
 Recently, Duan et al. in their famous paper \textit{Breaking the Sorting Barrier for Directed Single-Source Shortest Paths}\cite{duanBreakingSortingBarrier2025}, 
 improved the time complexity of \textsc{DIJKSTRA} to $O(m \log^{2/3}n)$, 
 yet \textsc{DIJKSTRA} still has a fundamental flaw, it's working "blind" without knowing whether or not if the path it is exploring will lead towards a target node $t \in T$. 
 
-Specifically in our case, on the SSMTSP problem, even if \textsc{DIJKSTRA} manages to find the shortest path to one of the target nodes 
-it still has many paths to explores and thus many more cases where it may explore in completely wrong direction leading to the calculation of irrelevant regions.
+Specifically in our case, on the SSMTSP problem, \textsc{DIJKSTRA} still falls shorts in many cases, leading to dead-ends, as it is forced to explore every node with a smaller distance cost to a target node, even if its inefficient and unnecessary to do so.
 
 This inefficiency highlights the need of algorithms which use external information.
 Heuristic algorithms like A*\cite{hartFormalBasisHeuristic1968b} attempt to combat this issue, but even then, we require specific knowledge to calculate the heuristic value $h(n)$, 
 on which we have the inability to dynamically re-calculate computationally all the time for multiple targets.
 
-\textsc{DIJKSTRA-PREDICTION} on the other hand, tackles the issue by utilizing machine learning techniques to prune the search space all-together, skipping irrelevant edges, 
-while still maintaining an optimal shortest
+\textsc{DIJKSTRA-PREDICTION}, by utilizing machine learning techniques to prune the search space, manages to skip irrelevant edges, while still maintaining a guarantee of the optimal shortest path, but yet still falls short of tackling this issue.
+
+\section{Comparative Analysis of Other Algorithms}
+\label{sec:compare_dijkstra}
+
+To fully understand the trade-offs of \texttt{DIJKSTRA}, it is essential to evaluate it against alternative path-finding algorithms.
+
+Compared to other algorithms, \texttt{DIJKSTRA} maintains its place as a foundational \textit{stepping stone} due to the nature of its algorithmic design. Specifically, \texttt{DIJKSTRA} offers a unique balance of determinism, exactness, and flexibility, which we will further explore.
+
+
+\subsection{Dynamic Programming: The Bellman-Ford Algorithm}
+\label{subsec:compare_dijkstra}
+
+A downside of \texttt{DIJKSTRA}, is its reliance on non-negative weights ($w(e) \geq 0$) to find the shortest path. If we try solving a graph with any negative weights ($\exists e \in E \text{ s.t. } w(e) < 0$), the greedy nature of \texttt{DIJKSTRA} causes it to fail, because it may cause a premature finish of the algorithm, not allowing it to later find a cost-reducing path through a negative edge. 
+
+To showcase this failure, consider the simple graph in Figure \ref{fig:negative_edge_example} with three vertices. The edges are defined as $(A, B)$ with $w=5$, $(A, C)$ with $w=2$, and a negative edge $(B, C)$ with $w=-10$ %.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.5\linewidth]{tex/figures/figure_dijkstra_vs_bellman.pdf}
+    \caption{A simple directed graph featuring a negative edge weight. \newline \textsc{DIJKSTRA}'s greedy approach incorrectly settles node $C$ before discovering the negative edge $(B, C)$.}
+    \label{fig:negative_edge_example}
+\end{figure}
+
+When standard \textsc{DIJKSTRA} processes this graph, it executes the following sequence:
+\begin{itemize}
+    \item \textbf{Initialization:} Distance to $A = 0$, while $B = \infty$ and $C = \infty$ %.
+    \item Step 1 (Extract A) The algorithm extracts $A$ (the minimum distance node). It updates its neighbors, setting $B = 5$ and $C = 2$ %.
+    \item Step 2 (Extract C): The algorithm extracts the next minimum distance node, which is $C$ (since $2 < 5$). Because $C$ has no outgoing edges, it is marked as visited. \textsc{DIJKSTRA} now irrevocably locks in the shortest path to $C$ as $2$ %.
+    \item Step 3 (Extract B): The remaining node $B$ (distance $= 5$) is extracted. The algorithm relaxes edge $B \rightarrow C$. The cost to reach $C$ through $B$ would be $5 + (-10) = -5$ %.
+\end{itemize}
+
+At finalization \texttt{DIJKSTRA} claims the shortest path to $C$ is $2$ (via $A \rightarrow C$), in reality we can achieve a distance of $-5$ (via $A \rightarrow B \rightarrow C$).
+
+To tackle this issue, Bellman-Ford\footnote{Although often referred to as the Bellman-Ford algorithm, this method was developed and published independently by Alfonso Shimbel (1955), Lester Ford Jr. (1956), Edward F. Moore (1957), and Richard Bellman (1958). It is often also referred to as the Bellman-Ford-Moore algorithm.}\cite{bellman:routing} uses a dynamic approach. Unlike the greedy approach of extracting the edge with the current least weight/cost, it relaxes all $m$ edges across $n-1$  iterations, resulting in an time complexity of $\mathcal{O}(nm)$. Thus, although Bellman-Ford offers a \textit{heavier} computational cost compared to that of \texttt{DIJKSTRA} ($O(m+n\log n$), it provides a solution to the negative edge problem. 
+
+However, even so in real-life application, where edges usually represent measurements of distance or time, edges are inherently non-negative. It is for that fact, that the greedy approach \texttt{DIJKSTRA} has to offer can usually be a far better option when it comes to computational efficiency.
+
+\subsection{Heuristic and Goal-Directed Search: A* and ALT}
+\label{subsec:alphastar_alt}
+As we previously discussed on Section \ref{subsec:limits}, \texttt{DIJKSTRA}'s greedy expansion causes the unnecessary consideration and exploration of irrelevant \textit{dead-end} nodes if their accumulated cost is smaller compared to the accumulated cost of a target node. Figure \ref{fig:blind_limit} visually showcases this flaw.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\linewidth]{tex/figures/figure_blind_limit.pdf}
+    \caption{To reach the target $T$ (total cost 20), \texttt{DIJKSTRA}'s greedy expansion forces it to first explore the irrelevant nodes $N_1, N_2,$ and $N_3$, simply because their accumulated cost (5) is locally smaller.}
+    \label{fig:blind_limit}
+\end{figure}
+
+To combat this exact limitation, heuristic and goal-driven algorithms utilize external information on directional orientation data to significantly reduce the search space and avoid irrelevant nodes.
+\newpage
+
+The A* algorithm\cite{hartFormalBasisHeuristic1968b} augments \textsc{DIJKSTRA} by incorporating a heuristic function $h(u)$, which estimates the remaining cost from an active node $u$ to a specific target node $t$. By sorting the priority queue based on the evaluation function $f(u) = g(u) + h(u)$, where $g(u)$ represents the exact accumulated cost from the source, A* \textit{pushes} the frontier expansion toward the destination.
+
+The ALT\cite{goldbergComputingShortestPath2005} algorithm, refines this approach by combining A* search with Landmarks and the Triangle Inequality  $d(u,v) \ge |d(l,v) - d(l,u)|$ to derive lower bounds without requiring geometric coordinates. 
+
+While these approaches are drastically faster to \texttt{DIJKSTRA} in point-to-point (P2P), they suffer from a fundamental flaw of their own.  In the SSMTSP framework, which Feijen and Schäfer tackle, the execution stops as soon as the algorithm settles the \textit{closest} target $t \in T$. Designing and configuring a heuristic $h(u)$ for this problem introduces a huge bottleneck. At initialization, the algorithm does not know which of the targets $t \in T$ is actually the closest, and as a result a goal-directed heuristic must continuously evaluate the distance to all potential targets to avoid overestimation (e.g., computing $h(u) = \min_{t \in T} h_t(u)$)
+Often, performing this evaluation for larger target sets will lead the algorithm to higher computational cost, compared to what it saves from pruning. Therefore, \texttt{DIJKSTRA}'s uniform blind search is quite often preferred, as it naturally stops at the nearest target node $t \in T$, without requiring any \textit{heavy} evaluation. 
+
+
+\subsection{Pre-processing Approaches: Contraction Hierarchies}
+\label{subsec:preprocessing_schemes}
+
+In web applications, classical algorithms are often \textit{put aside} in favor of advanced pre-computation schemes, such as Contraction Hierarchies\cite{geisbergerContractionHierarchiesFaster2008}. These techniques execute an expensive offline pre-processing phase to insert shortcut edges (See Figure \ref{fig:shortcut_edge}). For instance, in a Contraction Hierarchy, if the optimal route from node $A$ to node $C$ strictly passes through a lower-importance node $B$, the algorithm \textit{contracts} $B$ and inserts an artificial shortcut edge $A \rightarrow C$ with a combined weight of $w(A,B) + w(B,C)$. By pre-computing millions of such shortcuts, online algorithm can ignore dense local networks resolve shortest paths in microseconds.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\linewidth]{tex/figures/figure_shortcut_edge.pdf}
+    \caption{A visual representation of a Contraction Hierarchy operation. Node $B$ is contracted, and a new shortcut edge $A \rightarrow C$ is inserted.}
+    \label{fig:shortcut_edge}
+\end{figure}
+
+Despite their unmatched query speed, these do not eliminate the need of classical algorithms like \texttt{DIJKSTRA}. First, all hierarchical pre-computation engines fundamentally rely on standard \textsc{DIJKSTRA} as a mechanism to execute the initial offline graph contractions of the pre-processing phase. Second, these modern methods collapse when it comes to dynamic graphs. For example, in a GPS system, if a sudden traffic accident drastically increases the traversal time (weight) of a major highway link (edge), the pre-computed shortcuts that utilize that link become instantly invalid, after which the systems \textit{old} hierarchy becomes effectively useless. The only solution then would require a computationally expensive re-calculation phase of the affected network regions, in order to remake any possible shortcuts.
+
+Classical \textsc{DIJKSTRA} does not require any geometric coordinates, external spatial data, or structural pre-computation to guarantee an exact global optimum. Its simplicity, effectiveness, and capacity to handle dynamic edge-weight variations explain why it remains an important operational algorithm inside modern routing, telecommunication, and networks.

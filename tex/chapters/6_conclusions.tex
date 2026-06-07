@@ -1,0 +1,29 @@
+\chapter{Conclusion and Future Work}
+\label{ch:conclusion}
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+This thesis extensively examined the implementation of Machine Learning approaches with classical routing algorithms. We analyzed in depth the \texttt{DIJKSTRA-PREDICTION} framework proposed by Feijen and Schäfer, with the aim to validate or dismiss their claims surrounding their algorithm.
+
+We presented a fully interactive environment where users may generate, save, load and edit graphs to see visualize the algorithmic differences.
+
+Furthermore, through our evaluation across a dataset of 10,000 graphs, generated through the Erdős-Rényi random graph model, we were able to validate their findings and showcase the algorithm's overall efficiency and time execution acceleration compared to \texttt{DIJKSTRA}.
+
+We further analyzed the algorithms oracle selection and concluded that no matter the oracle's complexity, execution time spent on inference does not fluctuate to a substantial level.
+
+Overall the augmented algorithm pruned the search space, resulting in an approximate $63.5\%$ reduction in Priority Queue operations, which further resulted in a substantial approximate $75\%$ reduction on runtime.
+
+Ultimately, this research leads us to conclude that through the implementation and cooperation of machine learning techniques and classical graph algorithms, we can effectively transform an exhaustive mathematical search into an efficient process.
+
+\section{Future Work}
+\label{sec:future_work}
+
+Last, while \texttt{DIJKSTRA-PREDICTION} exhibits exceptional performance in our test environments, this research opens several different avenues for future works.
+
+\begin{itemize}
+    \item Testing and evaluation were extensively conducted across the Erdős-Rényi random graph generation model. Future research, should analyze the algorithm on real-life geographical routing (e.g. OpenStreetMap), social networks (e.g. Facebook) and semantic networks (e.g. Wikipedia topics relationships). Evaluating the algorithm across non-spatial domains would provide a better understanding on the algorithm's capability.
+    \item As hardware accelerators and processing units continue to evolve, the latency constraints and computational cost reductions will make it feasible to revisit Graph Neural Networks (GNNs) or Attention-based Transformers as distance-estimating oracles. Such models could lead to a near-perfect prediction $P$.
+    \item Further algorithmic expansion and dynamic hyperparameter optimization present a further opportunity for improvement. In our evaluation, parameters such as the prediction trigger step ($i_0$) and the boundary expansions ($\alpha$ and $\beta$) were statically defined. Future implementations could train models to dynamically infer the optimal $i_0$ step based on the given graph's size and density. 
+    \item Finally, through further work, applying this learning-augmented predictive pruning methodology to other classical algorithms, such as the A* search algorithm, could lead to an even bigger computational gain and faster execution times.
+\end{itemize}

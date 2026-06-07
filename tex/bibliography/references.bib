@@ -289,3 +289,95 @@
   abstract = {We consider the single-source many-targets shortest-path (SSMTSP) problem in directed graphs with non-negative edge weights. A source node s and a target set T is specified and the goal is to compute a shortest path from s to a node in T . Our interest in the shortest path problem with many targets stems from its use in weighted bipartite matching algorithms. A weighted bipartite matching in a graph with n nodes on each side reduces to n SSMTSP problems, where the number of targets varies between n and 1 . The SSMTSP problem can be solved by Dijkstra's algorithm. We describe a heuristic that leads to a significant improvement in running time for the weighted matching problem; in our experiments a speed-up by up to a factor of 12 was achieved. We also present a partial analysis that gives some theoretical support for our experimental findings.},
   file = {C:\Users\lazgi\Zotero\storage\SVVZ5BMS\Bast et al. - 2003 - A Heuristic for Dijkstra's Algorithm with Many Targets and Its Use in Weighted Matching Algorithms.pdf}
 }
+
+@article{bellman:routing,
+  added-at = {2008-03-11T14:52:34.000+0100},
+  author = {Bellman, R.},
+  biburl = {https://www.bibsonomy.org/bibtex/25be92b12aee7065fda1998b97b821e70/idsia},
+  citeulike-article-id = {2375855},
+  interhash = {fb1700ff5f5ad00a7d3ad00ee02aad31},
+  intrahash = {5be92b12aee7065fda1998b97b821e70},
+  journal = {Quarterly of Applied Mathematics},
+  keywords = {nn},
+  pages = {87--90},
+  priority = {2},
+  timestamp = {2008-03-11T15:05:23.000+0100},
+  title = {On a Routing Problem},
+  volume = 16,
+  year = 1958
+}
+
+@article{erdos1960evolution,
+  title={On the evolution of random graphs},
+  author={Erdős, Paul and Rényi, Alfréd},
+  journal={Publication of the Mathematical Institute of the Hungarian Academy of Sciences},
+  volume={5},
+  number={1},
+  pages={17--61},
+  year={1960}
+}
+
+@article{rumelhartLearningRepresentationsBackpropagating1986,
+  title = {Learning Representations by Back-Propagating Errors},
+  author = {Rumelhart, David E. and Hinton, Geoffrey E. and Williams, Ronald J.},
+  date = {1986-10},
+  journaltitle = {Nature},
+  volume = {323},
+  number = {6088},
+  pages = {533--536},
+  publisher = {Nature Publishing Group},
+  issn = {1476-4687},
+  doi = {10.1038/323533a0},
+  url = {https://www.nature.com/articles/323533a0},
+  urldate = {2026-06-03},
+  abstract = {We describe a new learning procedure, back-propagation, for networks of neurone-like units. The procedure repeatedly adjusts the weights of the connections in the network so as to minimize a measure of the difference between the actual output vector of the net and the desired output vector. As a result of the weight adjustments, internal ‘hidden’ units which are not part of the input or output come to represent important features of the task domain, and the regularities in the task are captured by the interactions of these units. The ability to create useful new features distinguishes back-propagation from earlier, simpler methods such as the perceptron-convergence procedure1.},
+  langid = {english},
+  keywords = {Humanities and Social Sciences,multidisciplinary,Science}
+}
+
+@inproceedings{chenXGBoostScalableTree2016,
+  title = {{{XGBoost}}: {{A Scalable Tree Boosting System}}},
+  shorttitle = {{{XGBoost}}},
+  booktitle = {Proceedings of the 22nd {{ACM SIGKDD International Conference}} on {{Knowledge Discovery}} and {{Data Mining}}},
+  author = {Chen, Tianqi and Guestrin, Carlos},
+  date = {2016-08-13},
+  eprint = {1603.02754},
+  eprinttype = {arXiv},
+  eprintclass = {cs.LG},
+  pages = {785--794},
+  doi = {10.1145/2939672.2939785},
+  url = {http://arxiv.org/abs/1603.02754},
+  urldate = {2026-06-03},
+  abstract = {Tree boosting is a highly effective and widely used machine learning method. In this paper, we describe a scalable end-to-end tree boosting system called XGBoost, which is used widely by data scientists to achieve state-of-the-art results on many machine learning challenges. We propose a novel sparsity-aware algorithm for sparse data and weighted quantile sketch for approximate tree learning. More importantly, we provide insights on cache access patterns, data compression and sharding to build a scalable tree boosting system. By combining these insights, XGBoost scales beyond billions of examples using far fewer resources than existing systems.},
+  keywords = {Computer Science - Machine Learning},
+  file = {C\:\\Users\\lazgi\\Zotero\\storage\\P537YXVB\\Chen and Guestrin - 2016 - XGBoost A Scalable Tree Boosting System.pdf;C\:\\Users\\lazgi\\Zotero\\storage\\NFTYS3BG\\1603.html}
+}
+
+@ARTICLE{scarselliTheGraphNeuralNetworkModel2009,
+  author={Scarselli, Franco and Gori, Marco and Tsoi, Ah Chung and Hagenbuchner, Markus and Monfardini, Gabriele},
+  journal={IEEE Transactions on Neural Networks}, 
+  title={The Graph Neural Network Model}, 
+  year={2009},
+  volume={20},
+  number={1},
+  pages={61-80},
+  keywords={Neural networks;Biological system modeling;Data engineering;Computer vision;Chemistry;Biology;Pattern recognition;Data mining;Supervised learning;Parameter estimation;Graphical domains;graph neural networks (GNNs);graph processing;recursive neural networks},
+  doi={10.1109/TNN.2008.2005605}
+}
+
+@online{vaswaniAttentionAllYou2023,
+  title = {Attention {{Is All You Need}}},
+  author = {Vaswani, Ashish and Shazeer, Noam and Parmar, Niki and Uszkoreit, Jakob and Jones, Llion and Gomez, Aidan N. and Kaiser, Lukasz and Polosukhin, Illia},
+  date = {2023-08-02},
+  eprint = {1706.03762},
+  eprinttype = {arXiv},
+  eprintclass = {cs.CL},
+  doi = {10.48550/arXiv.1706.03762},
+  url = {http://arxiv.org/abs/1706.03762},
+  urldate = {2026-06-03},
+  abstract = {The dominant sequence transduction models are based on complex recurrent or convolutional neural networks in an encoder-decoder configuration. The best performing models also connect the encoder and decoder through an attention mechanism. We propose a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely. Experiments on two machine translation tasks show these models to be superior in quality while being more parallelizable and requiring significantly less time to train. Our model achieves 28.4 BLEU on the WMT 2014 English-to-German translation task, improving over the existing best results, including ensembles by over 2 BLEU. On the WMT 2014 English-to-French translation task, our model establishes a new single-model state-of-the-art BLEU score of 41.8 after training for 3.5 days on eight GPUs, a small fraction of the training costs of the best models from the literature. We show that the Transformer generalizes well to other tasks by applying it successfully to English constituency parsing both with large and limited training data.},
+  pubstate = {prepublished},
+  keywords = {Computer Science - Computation and Language,Computer Science - Machine Learning},
+  file = {C\:\\Users\\lazgi\\Zotero\\storage\\NBJY9ZXM\\Vaswani et al. - 2023 - Attention Is All You Need.pdf;C\:\\Users\\lazgi\\Zotero\\storage\\DHE7GJAF\\1706.html}
+}
+

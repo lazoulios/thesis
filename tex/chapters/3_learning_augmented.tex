@@ -2,7 +2,7 @@
 \label{ch:learning_augmented}
 
 \section{Introduction to Algorithms with Predictions}
-In computer science, the standard for noting the worst case time and space complexity has been using O, $\Omega$ and $\Theta$ 
+In computer science, the standard for noting the worst case time and space complexity has been using $Big$ $O$ Notation, 
 which was proposed by and standardized by Donald E. Knuth\cite{knuthBigOmicronBig1976} in order to match the mathematical notations of the time. 
 While mathematically this provides a guarantee, it assumes a worst case scenario, distinguishing from real-world cases where data and scenarios vary.
 
@@ -16,10 +16,11 @@ Algorithm with Predictions\cite{mitzenmacherAlgorithmsPredictions2020} aims to f
 while still maintaining a reliable "safeguard" to fall back to in the case of wrong predictions.
 
 \section{Performance Metrics}
+\label{sec:prinicples}
 As mentioned in Chapter 1, the goal is for the given algorithm to therefore follow along the three principles laid out 
 (see Lykouris and Vassilvitskii\cite{lykourisCompetitiveCachingMachine2021}) regarding online algorithms: $\alpha$-consistency, $\beta$-robustness and $\gamma$-approximate.
 
-For analysis we consider the perfomance of a prediction algorithm and denote it as $ALG$ and an optimal offline algorithm that has access to the correct predictions as $OPT$.
+For analysis we consider the performance of a prediction algorithm and denote it as $ALG$ and an optimal offline algorithm that has access to the correct predictions as $OPT$.
 For the purposes of the \textit{SSMTSP} problem, the cost of an algorithm refers to the number of nodes explored (or visited).
 
 \begin{itemize}
@@ -30,33 +31,163 @@ For the purposes of the \textit{SSMTSP} problem, the cost of an algorithm refers
     This guarantees that even with a bad prediction, the worst case performance of the algorithm is not excessively worse than the classic algorithm without predictions.
     \item \textbf{$\gamma$-approximate}: In real world scenarios, predictions are often not perfect but also not completely wrong. The truth falls somewhere in between. 
     With a prediction error $\eta$ defined as the distance between the predicted path and the optimal path, an algorithm should provide a competitive ratio that degrades gracefully as the prediction error increases.
-    In other words, a function $\gamma(\eta)$ should exist such that as the prediction error $\eta$ increases, the trasition from $\alpha$-consistency to $\beta$-robustness is smooth and predictable.
+    In other words, a function $\gamma(\eta)$ should exist such that as the prediction error $\eta$ increases, the tradition from $\alpha$-consistency to $\beta$-robustness is smooth and predictable.
 \end{itemize}
 
 We will analyze the algorithm proposed by Feijen and Schäfer\cite{feijenDijkstrasAlgorithmPredictions2023} using this framework.
 
-\section{The DIJKSTRA-PREDICTION Algorithm}
+\section{DIJKSTRA-PREDICTION Algorithm} \label{sec:dijkstra-prediction}
 
-Feijen and Schäfer\cite{feijenDijkstrasAlgorithmPredictions2023} proposed the \textsc{DIJSKTRA-PREDICTION} algorithm utilizing neural networks not for finding a complete solution but rather 
+Feijen and Schäfer\cite{feijenDijkstrasAlgorithmPredictions2023} proposed the \textsc{DIJKSTRA-PREDICTION} algorithm utilizing neural networks not for finding a complete solution but rather 
 for pruning the search space of \textsc{DIJKSTRA}, specifically to tackle the SSMTSP Problem. 
 
-Their algorithm builds upon the algorithm proposed by Bast et al.\cite{bastHeuristicDijkstrasAlgorithm2003} utilizing ML techniques, and utilizies an upper bound $B$.
-At initialization $B= \infty$ and $B$ is reduced after that every time a shortest distance to $\delta(T)$ is found. 
-we will denote the optimal shortest path as $D$. It is clear therefore that $B  D$
+\textsc{DIJKSTRA-PREDICTION} predicts an estimated shortest path value $P$ after some $i_o$ iterations of running the prediction model.
+The model only receives as input the $trace$ of the algorithm. As defined by Feijen and Schäfer\cite[Sec.~3.1]{feijenDijkstrasAlgorithmPredictions2023}, this trace is a sequence of tuples:
 
-\textsc{DIJKSTRA-PREDICTION} predicts an estimated shortest path $P$ after some io iterations of running the prediction model.
-The algorithm keeps track of both the upper bound $B$ and the predicted path $P$ encountered at every moment and effectively prunes (does not explore) 
-all edges for which the tentative distance $d(u) + w(u, v)$ exceeds $B$ or $P$.
+\begin{equation}
+    \mathbf{X} = ((d_1, B_1), (d_2, B_2), \dots, (d_{i_0}, B_{i_0}))
+\end{equation}
 
-Notably, this solution still doesn't tackle \textsc{DIJKSTRA}'s "blindness" issue. As Feijen and Schafer showed, in the worst case instace
-/footnote{} the algorithm may not prune a single edges. 
-Such is the case in Figure 3.1. Even with a perfect condition P=100 both dead-ends are still explored and not pruned since 
+The $trace$ is recorded during the first $i_0$ steps.
+\begin{description}
+    \item[$\bullet$] \textbf{$d_i$} acts as a lower bound of the distance of the node extracted from the priority queue at iteration $i$ (effectively tracking the expanding radius of the algorithm).
+    \item[$\bullet$] \textbf{$B_i$} acts as an upper bound, representing the best known distance to a target at that specific iteration. $B_i$ was originally proposed by Bast et al.\cite{bastHeuristicDijkstrasAlgorithm2003} which Feijen and Schäfer build upon. At initialization $B= \infty$ and $B$ is reduced after that every time a shortest distance to a target $t \in T$ is found. 
+    We will denote the optimal shortest path as $D$. It is clear therefore that $B \ge D$
+\end{description}
+
+By observing the rate at which the lower bound grows and the upper bound shrinks, the neural network is able to predict the potential optimal shortest path distance $D$. Utilizing this prediction $P$ alongside $B$, the algorithm actively prunes the search space, refusing to explore any edges where the tentative distance $d(u) + w(u, v)$ exceeds either of these two thresholds. 
+
+More formally, an outgoing edge $(u, v)$ is pruned if its tentative distance satisfies the following condition:
+\begin{equation}
+    d(u) + w(u, v) > \min(B, P)    
+\end{equation}
+
+However, a strict distinction is made based on which threshold is exceeded:
+\begin{description}
+    \item[$\bullet$] If $d(u) + w(u, v) > B$, the edge is permanently pruned because a shorter path to a target has already been established.
+    \item[$\bullet$] If $P < d(u) \le B$, the edge is not permanently discarded but stored as a fallback, to tackle potential neural network underestimations.
+\end{description}
+
+To guarantee that the algorithm does not fail, \texttt{DIJKSTRA-PREDICTION} introduces a \textbf{Reserve Set ($R$)}. Instead of discarding the node, the algorithm temporarily stores it in the Reserve Set $R$.
+
+If the algorithm search space is empty before a target $t \in T$ is reached, the \texttt{UPDATE-PREDICTION} routine is called to inflate the prediction value $P$ by a factor of $\beta$. 
+
+The exact mechanism and necessity of the \texttt{UPDATE-PREDICTION} routine and the Reserve Set $(R)$ will be analyzed in detail in Section \ref{subsec:bad_predictions} 
+
+We provide the code for \texttt{DIJKSTRA-PREDICTION} below:
+
+\begin{algorithm}[H]
+\caption{DIJKSTRA-PREDICTION (G, w, s, T, $i_0$, $\alpha$, $\beta$)}
+$d(s) = 0$, $d(v) = \infty$ for all $v \in V \setminus \{s\}$ \tcp*{tentative distances}
+$B = \infty$, $P = \infty$, $X = []$ \tcp*{pruning bound, prediction and array to store trace}
+PQ.INSERT$(s, d(s))$, $R = \emptyset$\;
+$i = 0$\;
+\While{not PQ.EMPTY()}{
+    \eIf{PQ.MIN-PRIO() $\le P$}{
+        $u =$ PQ.REMOVE-MIN() \tcp*{u becomes settled}
+        \If{$u \in T$}{
+            \textbf{STOP} \tcp*{stop when u is target}
+        }
+        $i = i + 1$\;
+        \If{$i \le i_0$}{
+            $X[i] = (d(u), B)$ \tcp*{extend trace}
+        }
+        \If{$i == i_0$}{
+            $P = \alpha \cdot$ PREDICTION$(X)$ \tcp*{get prediction}
+        }
+        \For{$(u, v) \in E$}{
+            $tent = d(u) + w(u, v)$ \tcp*{tentative distance of v}
+            \If{$tent > B$}{
+                \textbf{continue} \tcp*{prune (u, v)}
+                }
+            \If{$v \in T$}{
+                $B = \min\{tent, B\}$\;
+            }
+            RELAX-PREDICTION$(u, v, tent, P)$\;
+        }
+    }{
+        UPDATE-PREDICTION() \tcp*{call update prediction routine (see Alg. \ref{alg:update_routine})}
+    }
+}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{RELAX-PREDICTION(u, v, tent, P)}
+\If{$d(v) > tent$}{
+    \eIf{$d(v) == \infty$}{
+        \eIf{$tent \le P$}{
+            PQ.INSERT$(v, tent)$ \tcp*{add v to PQ}
+        }{
+            R.INSERT$(v, tent)$ \tcp*{add v to R}
+        }
+    }{
+        \eIf{$v \notin R$}{
+            PQ.DECREASE-PRIO$(v, tent)$ \tcp*{decrease priority}
+        }{
+            \eIf{$tent > P$}{
+                R.DECREASE-PRIO$(v, tent)$ \tcp*{decrease priority in R}
+            }{
+                R.REMOVE$(v)$\;
+                PQ.INSERT$(v, tent)$ \tcp*{move v from R to PQ}
+            }
+        }
+    }
+    $d(v) = tent$ \tcp*{update distance of v}
+}
+\end{algorithm}
+\vspace{.5cm}
+
+
+Notably, this solution still doesn't tackle \textsc{DIJKSTRA}'s "blindness" issue. As Feijen and Schafer showed \cite[Sec.~4.1]{feijenDijkstrasAlgorithmPredictions2023}, in the worst case the algorithm may not prune a single edge. 
+This is the case in Figure \ref{fig:worst_case_traps}. Even with a perfect condition P=100, both dead-ends are still explored and not pruned, since 
 their tentative distances ($10+90=100$ and $20+80=100$) do not exceed the threshold $P$.
-
-
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.9\textwidth]{figures/figure1.pdf}
-    \caption{Alternate Worst-Case Scenario: Multiple Branching Traps.}
+    \includegraphics[width=0.7\textwidth]{figures/figure1.pdf}
+    \caption{Theoretical worst-case topology featuring multiple branching traps. Such configurations force the algorithm to perform redundant priority queue operations and explore irrelevant branches before a definitive pruning bound can be established.}
     \label{fig:worst_case_traps}
 \end{figure}
+
+\vspace{2cm}
+
+\subsection{Handling Bad Predictions} \label{subsec:bad_predictions}
+
+Since the prediction value $P$ is generated by a machine learning model, it is inherently prone to errors. The performance of the algorithm depend directly to whether $P$ is an underestimations or an overestimation of the optimal shortest path distance $D$:
+\begin{description}
+    \item[$\bullet$] In the case of an overestimation ($P > D$) the algorithm maintains its mathematical correctness with a drawback on its efficiency since it fewer nodes will effectively not satisfy the condition for pruning. This results in the unnecessary execution of Priority Queue operations, causing the algorithm to act similar to \texttt{DIJKSTRA}
+    \item[$\bullet$] In the case of an underestimation ($P = D$) the algorithm may be lead into pruning edges that are essential to the shortest distance value $D$. To guarantee that the algorithm always find the optimal solution, regardless of the prediction accuracy, the fallback mechanism (as briefly described in Sec. \ref{sec:dijkstra-prediction}) utilizes a Reserve Set $(R)$. When an edge $(u, v)$ is scanned and its tentative distance $d(u) + w(u, v)$ exceeds the prediction $P$, but does not exceed the upper bound $B$, the node $v$ is not permanently discarded. Instead, it is inserted into the Reserve Set $R$. If the priority queue becomes empty before a target is reached, or if the minimum tentative distance in the priority queue exceeds $P$, the algorithm calls the \textsc{UPDATE-PREDICTION} routine. This routine multiplies the current prediction by a factor $\beta > 1$ ($P = \beta \cdot P$). 
+\end{description}
+
+We provide the code for the \texttt{UPDATE-PREDICTION} below:
+\vspace{0.5cm}
+
+\begin{algorithm}[H]
+\caption{UPDATE-PREDICTION()} \label{alg:update_routine}
+$P = \beta \cdot P$ \tcp*{inflate prediction}
+\ForEach{$v \in R$ \textnormal{with} $d(v) \le P$} {
+    \If{$d(v) \le B$}{ \tcp{inserting reserve set nodes that are now relevant}
+        R.REMOVE$(v)$\;
+        PQ.INSERT$(v, d(v))$ \tcp*{move v from R to PQ}
+    }
+}
+\end{algorithm}
+\vspace{0.5cm}
+
+The \texttt{UPDATE-PREDICTION} routine should not happen too often as it reduces the efficiency of the algorithm. Therefore, the initial prediction is inflated by a small factor $\alpha \ge 1$.
+
+To further improve upon the efficiency of the \texttt{UPDATE-PREDICTION} routine, the data structure of the Reserve Set $R$ is set-up in a specific manner, different to that of the simple sorted Priority Queue. $R$ is not maintained as a standard list, instead it utilizes a tailored \textit{bucketing} system. Nodes are stored in a series of linked lists (\textit{buckets}), where a node belongs to bucket $i \in \mathbb{N}$ if its tentative distance falls strictly within the range $(\beta^{i-1} \times P \le tent \le \beta^i \times P)$. With this structuring, when the $i$-th \textsc{UPDATE-PREDICTION} is triggered and $P$ is inflated, the algorithm does not need to scan the entire reserve set; it simply extracts all nodes from bucket $i$ and moves them directly into the priority queue.
+
+By implementing these measures Feijen and Schäfer are able to guarantee the algorithm's $\beta$-robustness and ensure that a optimality certificate is always provided, regardless of the the error on the prediction.
+
+\subsection{Evaluation Against Performance Metrics}
+\label{subsec:eval_metrics}
+
+Having established the mechanics of \textsc{DIJKSTRA-PREDICTION} and its fallback mechanisms, we can now evaluate the algorithm against the three core learning-augmented principles defined in Section \ref{sec:prinicples}.
+
+\begin{description}
+    \item[$\bullet$] \textbf{$\alpha$-consistency (The Certificate Caveat):} While the algorithm heavily utilizes predictions, it does not achieve strict $\alpha$-consistency in the worst case (See Feijen and Schäfer\cite[Sec.~4.1]{feijenDijkstrasAlgorithmPredictions2023}), even if the neural network provides a completely perfect prediction ($\eta = 0$), the algorithm might not save a single priority queue operation. This is because the algorithm cannot blindly trust the prediction and must still explore surrounding nodes to definitively prove that no shorter path exists (\textit{certificate of optimality}). The branching trap shown previously in Figure \ref{fig:worst_case_traps} illustrates why this exploration remains necessary.
+    
+    \item[$\bullet$] \textbf{$\beta$-robustness:} The algorithm successfully achieves $\beta$-robustness. This is entirely because of the \texttt{UPDATE-PREDICTION} routine and the Reserve Set ($R$), shown in in Section \ref{subsec:bad_predictions}. If the model underestimates the optimal path, the reserve system ensures the prediction is inflated ($\beta \cdot P$) and relevant nodes are re-inserted into the priority queue in buckets. The algorithm never fails to find the optimal path, and its worst-case running time remains $\mathcal{O}(m + n \log n)$, matching the classic \textsc{DIJKSTRA} algorithm.
+
+    \item[$\bullet$] \textbf{$\gamma$-approximate:} Since strict worst-case consistency is impossible, the algorithm's smoothness is evaluated on partial random instances by Feijen and Schäfer, who demonstrate that the algorithm exhibits a degradation of performance relative to the prediction error. Specifically, according to their findings, the number of irrelevant edges that are successfully pruned scales smoothly as the additive error ($\epsilon$) of the prediction decreases. The expected number of operations saved grows logarithmically depending on how close the prediction $P$ is to the actual shortest path distance $D$, effectively acting as our $\gamma(\eta)$ function. We will be looking futher into this in Chapter \ref{ch:experimentation}.
+\end{description}

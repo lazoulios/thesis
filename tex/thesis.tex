@@ -7,11 +7,17 @@
 \usepackage{amssymb}
 \usepackage{amsmath}
 \usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{tabularx}
 \usepackage{algpseudocode}
 \usepackage[linesnumbered,ruled,vlined]{algorithm2e}
 \renewcommand{\algorithmiccomment}[1]{\hfill // #1} 
 \usepackage{setspace}
 \usepackage{tikz}
+\usepackage[bottom]{footmisc}
+\usepackage{caption}
+\usepackage{subcaption}
 \usetikzlibrary{positioning, calc, backgrounds, shapes.geometric}
 
 % gia ta figures
@@ -27,16 +33,17 @@
 \begin{titlepage}
     \centering 
     \vspace{2.5cm} 
-    {\Large \textbf{Study and Implementation of Learning-Augmented Shortest Path Algorithms: Experimental Evaluation and Visualization Application}}\\[0.1cm]
+    {\Large \textbf{Accelerating Dijkstra: Prediction-Based Pruning and Interactive Visualization}}\\[0.1cm]
     \vspace{1cm}
     \vspace{2cm}
     Georgios Lazaridis\\[0.5cm]
     AEM: 4419\\[1cm]
+    Supervising Professor: Georgios Christodoulou\\[1.5cm]
     \includegraphics[width=0.3\textwidth]{images/auth.png}\\[0.5cm]
     \vspace{0.5cm}
     {\Large Aristotle University of Thessaloniki}
     \vfill
-    {\Large December 2025}
+    {\Large December 2025 - June 2026}
     \vspace*{1cm} 
 \end{titlepage}
 
@@ -49,7 +56,9 @@
 
 \tableofcontents
 \listoffigures
+\listoftables
 \listofalgorithms
+
 \newpage
 
 % main
@@ -59,8 +68,8 @@
 \include{chapters/2_background}
 \include{chapters/3_learning_augmented}
 \include{chapters/4_implementation}
-% \include{chapters/5_experiments}
-% \include{chapters/6_conclusions}
+\include{tex/chapters/5_experiments}
+\include{chapters/6_conclusions}
 
 % bibliography
 \bibliographystyle{ieeetr}
