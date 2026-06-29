@@ -18,6 +18,53 @@ from dijkstra import run_classic_dijkstra
 from dijkstra_prediction import run_prediction_dijkstra
 from dijkstra_prediction_windowed import run_prediction_dijkstra_windowed
 
+def trap_generate_erdos_renyi_graph(n, c, f):
+    # HIJACKED: Αντί για Erdős-Rényi, φτιάχνουμε τον Adversarial Graph
+    # Χρησιμοποιούμε το 'n' για να υπολογίσουμε το μήκος του μονοπατιού και τις διακλαδώσεις
+    
+    nodes = [{"id": str(i)} for i in range(n)]
+    
+    # Αφιερώνουμε το 1/6 των nodes στο κύριο μονοπάτι 
+    # και τα υπόλοιπα 5/6 γίνονται "νεκρές" διακλαδώσεις (Spam για το Reserve Set)
+    branches_per_node = 5
+    path_length = max(10, n // (branches_per_node + 1))
+    
+    start_node = "0"
+    target_nodes = [str(path_length - 1)]  # Ο στόχος είναι στο τέλος του κύριου μονοπατιού
+    
+    edges = []
+    edge_id_counter = 0
+    dummy_node_idx = path_length
+    
+    for i in range(path_length - 1):
+        # 1. Το Κύριο Μονοπάτι: Ελάχιστο βάρος (0.001) για να κρατάει το P μικρό
+        edges.append({
+            "id": f"e{edge_id_counter}",
+            "source": str(i),
+            "target": str(i + 1),
+            "weight": 0.001
+        })
+        edge_id_counter += 1
+        
+        # 2. Το Reserve Set Spam: Νεκρές διακλαδώσεις που μπαίνουν στο R
+        # Τις συνδέουμε μέχρι να ξεμείνουμε από συνολικά nodes (n)
+        for _ in range(branches_per_node):
+            if dummy_node_idx < n:
+                edges.append({
+                    "id": f"e{edge_id_counter}",
+                    "source": str(i),
+                    "target": str(dummy_node_idx),
+                    "weight": 0.05  # Μεγαλύτερο βάρος, ώστε να απορρίπτεται από το P και να πάει στο R
+                })
+                edge_id_counter += 1
+                dummy_node_idx += 1
+                
+    return {
+        "startNode": start_node,
+        "targetNodes": target_nodes,
+        "nodes": nodes,
+        "edges": edges,
+    }
 
 def generate_erdos_renyi_graph(n, c, f):
     p = c / n
@@ -59,9 +106,11 @@ def generate_erdos_renyi_graph(n, c, f):
     }
 
 
+
 def run_benchmark(
     num_graphs,
-    n,
+    n_min,          
+    n_max,
     c,
     f,
     i0,
@@ -80,7 +129,9 @@ def run_benchmark(
         run_windowed = run_prediction_dijkstra_windowed
 
     for idx in range(num_graphs):
-        payload = generate_erdos_renyi_graph(n, c, f)
+        n = random.randint(n_min, n_max)
+        print(f"Generating graph {idx + 1}/{num_graphs} with {n} nodes")
+        payload = trap_generate_erdos_renyi_graph(n, c, f)
         edge_objs = [SimpleNamespace(**edge) for edge in payload["edges"]]
 
         classic_start = time.perf_counter()
@@ -209,7 +260,8 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--num-graphs", type=int, default=10000)
-    parser.add_argument("--n", type=int, default=1000)
+    parser.add_argument("--n-min", type=int, default=100)
+    parser.add_argument("--n-max", type=int, default=10000)
     parser.add_argument("--c", type=float, default=8)
     parser.add_argument("--f", type=float, default=20)
     parser.add_argument("--i0", type=int, default=10)
@@ -227,7 +279,7 @@ def main():
         default="fast,medium,deep",
         help="Comma-separated list of XGBoost variants (fast,medium,deep)",
     )
-    parser.add_argument("--csv", type=str, default="pq_ops_benchmark.csv")
+    parser.add_argument("--csv", type=str, default="worst_p_pq_ops_benchmark.csv")
     parser.add_argument(
         "--progress-every",
         type=int,
@@ -256,7 +308,8 @@ def main():
     print(f"Starting pq_ops_benchmark for {args.num_graphs} graphs...")
     results = run_benchmark(
         args.num_graphs,
-        args.n,
+        args.n_min,      
+        args.n_max,
         args.c,
         args.f,
         args.i0,
@@ -270,7 +323,8 @@ def main():
 
     with mlflow.start_run(run_name="pq_ops_benchmark"):
         mlflow.log_param("num_graphs", args.num_graphs)
-        mlflow.log_param("n", args.n)
+        mlflow.log_param("n_min", args.n_min)
+        mlflow.log_param("n_max", args.n_max)
         mlflow.log_param("c", args.c)
         mlflow.log_param("f", args.f)
         mlflow.log_param("i0", args.i0)

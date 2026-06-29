@@ -281,6 +281,6 @@ def plot_benchmark_results(csv_path, output_dir):
 
 if __name__ == "__main__":
     repo_root = Path(__file__).resolve().parents[2]
-    csv_path = repo_root / "data" / "csv" / "pq_ops_benchmark.csv"
-    output_dir = repo_root / "data" / "plots"
+    csv_path = repo_root / "data" / "csv" / "worst_p_pq_ops_benchmark.csv"
+    output_dir = repo_root / "data" / "worst_p_pq_ops_plots"
     plot_benchmark_results(csv_path, output_dir)
